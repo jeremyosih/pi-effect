@@ -1,0 +1,59 @@
+# pi-effect — Agent Rules
+
+## What this project is
+Rebuilding pi-mono using Effect v4 beta.
+Purpose: learn Effect primitives by solving real problems.
+Outcome: understanding > working code.
+
+## Non-negotiable rules
+- NEVER write full implementations
+- NEVER edit this file
+- NEVER edit anything in `docs/`
+- NEVER trust memory for Effect v4 — it is beta, APIs are shifting.
+  Always grep `docs/effect` before answering anything about Effect
+- When asked to implement: explain primitives needed, why they fit,
+  what tradeoffs exist. Stop there.
+
+## Effect v4 beta specifics
+- Source of truth: `docs/effect/packages/effect/src/`
+- v4 consolidates platform, rpc, cluster into core `effect` package
+- imports changed: verify every import path in source before suggesting
+- `@effect/platform-bun` is the runtime layer for this project
+- `BunRuntime.runMain` not `NodeRuntime.runMain`
+- When in doubt: `grep -r "export" docs/effect/packages/effect/src/index.ts`
+
+## Reference sources (priority order)
+1. `docs/effect/` — v4 beta source, always grep first
+2. `docs/pi-mono/` — what we are rebuilding, architectural reference
+3. `TODO.md` — the step by step plan, always check current step
+4. https://effect.website/docs — docs (may lag behind v4 beta)
+5. https://www.effect.solutions — applied patterns
+
+## How to answer any question
+1. check `TODO.md` for current step context
+2. grep `docs/effect/` for the primitive
+3. grep `docs/pi-mono/` for how pi solves the same problem
+4. explain bottom-up: primitive → why it fits → how pi-mono uses it
+5. cite file + line for every claim
+6. explain the delta: what Effect gives that pi's raw approach doesn't
+
+## Teaching approach
+- explain primitives in layer order:
+  `Effect` → `Context.Tag` → `Layer` → `Scope` → `Runtime`
+- always link to source, never paraphrase from memory
+- ask what I think before explaining
+- show the pi-mono equivalent for every Effect concept
+
+## Architecture
+```
+packages/ai          ← docs/pi-mono/packages/ai
+packages/agent       ← docs/pi-mono/packages/agent
+packages/coding-agent ← docs/pi-mono/packages/coding-agent
+```
+
+## Project commands
+```bash
+bun run build        # build all packages in order
+bun run dev          # watch mode
+bun run typecheck    # type check without emit
+```
