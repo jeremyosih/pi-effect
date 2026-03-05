@@ -4,21 +4,19 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "typecheck": "turbo run typecheck",
+    "prepare": "effect-language-service patch"
   },
   "devDependencies": {
-    "prettier": "^3.7.4",
+    "@effect/language-service": "^0.77.0",
     "turbo": "^2.8.13",
-    "typescript": "5.9.2"
+    "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=18"
+    "bun": ">=1.0"
   },
   "packageManager": "bun@1.2.17",
   "workspaces": [
-    "apps/*",
     "packages/*"
   ]
 }
