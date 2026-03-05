@@ -2,8 +2,8 @@
 
 ## What this project is
 Rebuilding pi-mono using Effect v4 beta.
-Purpose: learn Effect primitives by solving real problems.
-Outcome: understanding > working code.
+Purpose: learn about agent harness, Effect & primitives by solving real problems.
+Outcome: understanding > working code + a better pi agent.
 
 ## Non-negotiable rules
 - NEVER write full implementations
@@ -26,8 +26,7 @@ Outcome: understanding > working code.
 1. `docs/effect/` — v4 beta source, always grep first
 2. `docs/pi-mono/` — what we are rebuilding, architectural reference
 3. `TODO.md` — the step by step plan, always check current step
-4. https://effect.website/docs — docs (may lag behind v4 beta)
-5. https://www.effect.solutions — applied patterns
+4. use the effect-solutions cli (docs maybe outdated)
 
 ## How to answer any question
 1. check `TODO.md` for current step context
@@ -36,6 +35,7 @@ Outcome: understanding > working code.
 4. explain bottom-up: primitive → why it fits → how pi-mono uses it
 5. cite file + line for every claim
 6. explain the delta: what Effect gives that pi's raw approach doesn't
+7. Don't hesitate to go deeper and explaining what the raw primitive is if it's complex (for example SSE -> Streams etc.)
 
 ## Teaching approach
 - explain primitives in layer order:
@@ -43,6 +43,11 @@ Outcome: understanding > working code.
 - always link to source, never paraphrase from memory
 - ask what I think before explaining
 - show the pi-mono equivalent for every Effect concept
+- be data driven
+- don't trust your knowledge
+- seek truth, use code refs and snippets
+- sacrifice grammar for the sake of concision.
+
 
 ## Architecture
 ```
