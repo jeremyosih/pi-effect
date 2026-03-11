@@ -6,13 +6,17 @@ Purpose: learn about agent harness, Effect & primitives by solving real problems
 Outcome: understanding > working code + a better pi agent.
 
 ## Non-negotiable rules
-- NEVER write full implementations
-- NEVER edit this file
+- NEVER write full implementations unless I explicitely ask for it
+- NEVER edit this file unless I explicitely ask for it
 - NEVER edit anything in `docs/`
+- `docs/smol-effect/MIGRATION.md` is the primary migration guide.
+- `docs/smol-effect/migration/` contains focused migration guides by topic.
+- `docs/smol-effect/packages/effect/src/` contains the Effect v4 beta API source.
+- ALWAYS use Effect v4 in this project.
 - NEVER trust memory for Effect v4 — it is beta, APIs are shifting.
-  Always grep `docs/effect` before answering anything about Effect
+  Always grep `docs/effect` and `docs/smol-effect/packages/effect/src/` before answering anything about Effect
 - When asked to implement: explain primitives needed, why they fit,
-  what tradeoffs exist. Stop there.
+  what tradeoffs exist. Stop there unless I explicitely ask for it.
 
 ## Effect v4 beta specifics
 - Source of truth: `docs/effect/packages/effect/src/`
@@ -24,9 +28,11 @@ Outcome: understanding > working code + a better pi agent.
 
 ## Reference sources (priority order)
 1. `docs/effect/` — v4 beta source, always grep first
-2. `docs/pi-mono/` — what we are rebuilding, architectural reference
-3. `TODO.md` — the step by step plan, always check current step
-4. use the effect-solutions cli (docs maybe outdated)
+2. `docs/smol-effect/MIGRATION.md` + `docs/smol-effect/migration/` — migration guides
+3. `docs/smol-effect/packages/effect/src/` — Effect v4 beta API source
+4. `docs/pi-mono/` — what we are rebuilding, architectural reference
+5. `TODO.md` — the step by step plan, always check current step
+6. use the effect-solutions cli (docs maybe outdated)
 
 ## How to answer any question
 1. check `TODO.md` for current step context

@@ -11,118 +11,202 @@
 
 ---
 
-- [ ] **1.1 — Types & Schema**
+- [ ] **1.1 — Canonical Domain + Errors**
 
-**Maps to:** `src/types.ts`
-**Build:** `Model`, `Message`, `ContentBlock`, `Tool`, `AssistantMessage`, `StreamEvent` types using `@effect/schema`.
+**Maps to:** `src/types.ts`, `src/index.ts`
+**Build:** Lock the canonical AI language first: `Model`, `Message`, `ContentBlock`, `Tool`, `ToolCall`, `AssistantMessage`, `Usage`, `StopReason`, `StreamEvent`. Keep this slice pure. Add typed error families before any provider work. Do not add HTTP, env, OAuth, registries, or provider SDKs here.
+
+**Files to change/create:**
+- change `packages/ai/src/types.ts`
+- change `packages/ai/src/index.ts`
+- create `packages/ai/src/errors.ts`
+- create `packages/ai/src/assistant-events.ts`
+- create `packages/ai/src/reduce-assistant-event.ts`
 
 **Effect primitives:**
+- `Effect<A,E,R>` as the base model for later slices
 - `Schema.Struct`, `Schema.Union`, `Schema.Literal`
-- `Schema.Class` for domain types
-- `Data.TaggedError` for `LLMError`, `ProviderError`
+- plain `Schema` by default; avoid `Schema.Class` unless the type needs real behavior
+- `Data.TaggedError` for `ProviderNotFound`, `AuthMissing`, `ProviderHttpError`, `ProviderProtocolError`, `ToolValidationError`, `Aborted`
 
-**Test:** Encode/decode a `Model` and a `Message[]` round-trip. All schema errors are typed.
+**Test:** Round-trip `Model`, `Message[]`, `ToolCall`, `Usage`. Reducer is pure and deterministic for text, thinking, tool call, usage, done, and error events.
 
 ---
 
-- [ ] **1.2 — Provider Service + Registry**
+- [ ] **1.2 — Provider Algebra + Public AI Client**
 
-**Maps to:** `src/api-registry.ts`, `src/models.ts`, `src/providers/register-builtins.ts`
-**Build:** `ApiRegistry` service that maps `(provider, modelId)` → provider implementation. Hardcode 3 models (claude, gpt-4o, gemini-flash).
+**Maps to:** `src/stream.ts`, `src/index.ts`
+**Build:** Define the minimal provider contract and the public façade before registries. `stream` is primitive. `complete` is derived by folding the same event stream. Keep this slice provider-agnostic and wire it with one fake provider in tests.
+
+**Files to change/create:**
+- create `packages/ai/src/provider.ts`
+- create `packages/ai/src/ai-client.ts`
+- create `packages/ai/src/stream.ts`
+- create `packages/ai/src/utils/event-stream.ts` only if a compatibility wrapper is still needed
+- replace any placeholder use of `packages/ai/src/utils/event-streams.ts`
+- change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Context.Tag` — define the `ApiRegistry` service interface
-- `Layer.succeed` — simplest Layer, no async needed yet
-- `Ref<Map<...>>` — mutable registry state
+- `Context.Tag` for owned services
+- `Layer.succeed` for the first in-memory wiring
+- `Effect.fn`, `Effect.gen`
+- `Stream<A,E,R>` as the provider return type
+- `Stream.runFold` to derive `complete` from `stream`
 
-**Test:** `ApiRegistry` resolves the right provider for each model. Unknown model returns typed `ModelNotFoundError`.
+**Test:** A fake provider emits canonical `StreamEvent`s. `AiClient.stream` exposes them unchanged. `AiClient.complete` folds the exact same events into the final `AssistantMessage`.
 
 ---
 
-- [ ] **1.3 — Auth Storage**
+- [ ] **1.3 — OpenAI Responses First Vertical Slice**
 
-**Maps to:** `src/env-api-keys.ts`, utils in `oauth/types.ts`
-**Build:** `AuthStorage` service: reads keys from env vars + `~/.pi/agent/auth.json`. Priority: env → file → OAuth fallback.
+**Maps to:** `src/providers/openai-responses.ts`, `src/providers/openai-responses-shared.ts`, `src/stream.ts`
+**Build:** Implement exactly one real provider end-to-end: OpenAI Responses. Support text deltas, thinking deltas, tool calls, usage, stop reasons, and folding to a final message. No registry dispatch yet. No OAuth. No Bedrock. No Google.
+
+**Files to change/create:**
+- create `packages/ai/src/providers/openai-responses.ts`
+- create `packages/ai/src/providers/openai-responses-shared.ts`
+- change `packages/ai/src/provider.ts`
+- change `packages/ai/src/ai-client.ts`
+- change `packages/ai/src/stream.ts`
+- change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Layer.effect` — async layer construction
-- `@effect/platform` `FileSystem`, `Path`
-- `Effect.orElse`, `Effect.catchTag` — typed fallback chain
-- `Config.string`, `Config.withDefault` — env var reading
+- `Layer.effect` for provider construction
+- `Effect.tryPromise` with typed error mapping
+- `Stream.asyncScoped` for callback / push / SSE bridging when possible
+- `Queue` + `Stream.fromQueue` when an explicit mailbox boundary is needed
+- `Effect.acquireRelease` only if the provider SDK truly owns lifecycle
 
-**Test:** Reads key from env. Falls back to file. Falls back to OAuth for supported providers. Returns typed `MissingKeyError` if none exist.
+**Test:** One mocked OpenAI Responses stream yields canonical events in order. `complete` returns the same final message the reducer would produce. Abort and protocol error paths surface typed errors.
 
 ---
 
-- [ ] **1.4 — Message Transformation**
+- [ ] **1.4 — Model Catalog + Provider Registry**
+
+**Maps to:** `src/models.ts`, `src/api-registry.ts`, `src/providers/register-builtins.ts`
+**Build:** After one provider works, split model lookup from provider lookup. `ModelCatalog` owns `getModel / getModels / getProviders`. `ProviderRegistry` owns provider resolution and built-in wiring. Use mutable registration only if runtime extension loading really needs it.
+
+**Files to change/create:**
+- create `packages/ai/src/models.ts`
+- create `packages/ai/src/api-registry.ts`
+- create `packages/ai/src/providers/register-builtins.ts`
+- change `packages/ai/src/providers/openai-responses.ts`
+- change `packages/ai/src/ai-client.ts`
+- change `packages/ai/src/index.ts`
+
+**Effect primitives:**
+- `Context.Tag`
+- `Layer.succeed`
+- `Ref<HashMap<...>>` only if runtime registration is required
+- prefer static layer composition for built-ins first
+
+**Test:** `getModel`, `getModels`, `getProviders` work from the catalog. Unknown model/provider resolves to typed errors. Registry dispatch sends OpenAI models to the OpenAI layer.
+
+---
+
+- [ ] **1.5 — Config + Auth Boundary**
+
+**Maps to:** `src/env-api-keys.ts`, `src/oauth.ts`
+**Build:** Move env access and auth lookup behind a typed boundary. Start with env/API key resolution. Keep OAuth behind an interface until the last slice. Do not let provider implementations reach into `process.env` directly.
+
+**Files to change/create:**
+- create `packages/ai/src/env-api-keys.ts`
+- create `packages/ai/src/auth-resolver.ts`
+- create `packages/ai/src/oauth.ts`
+- create `packages/ai/src/utils/oauth/types.ts`
+- change `packages/ai/src/providers/openai-responses.ts`
+- change `packages/ai/src/ai-client.ts`
+- change `packages/ai/src/index.ts`
+
+**Effect primitives:**
+- `Config`
+- `Schema.Config`
+- `Layer.effect`
+- `Effect.orElse`, `Effect.catchTag`
+- `@effect/platform` services only at the boundary
+
+**Test:** Reads key from env via typed config. Missing auth is typed. Provider code depends on `AuthResolver`, not raw env lookup.
+
+---
+
+- [ ] **1.6 — Message Transformation Boundary**
 
 **Maps to:** `src/providers/transform-messages.ts`, `src/providers/openai-responses-shared.ts`, `src/providers/google-shared.ts`
-**Build:** Pure functions that transform pi's canonical `Message[]` into provider-specific formats (Anthropic, OpenAI, Google).
+**Build:** Keep message conversion pure and isolated. Do not introduce cross-provider replay complexity before a second provider exists. OpenAI conversion can live beside the OpenAI provider first; extract shared transformers only when Anthropic / Google land.
+
+**Files to change/create:**
+- create `packages/ai/src/providers/transform-messages.ts`
+- create `packages/ai/src/providers/google-shared.ts`
+- change `packages/ai/src/providers/openai-responses-shared.ts`
+- change `packages/ai/src/providers/openai-responses.ts`
 
 **Effect primitives:**
-- `Effect.gen` with pure transformations
+- pure functions first
 - `Schema.encode` / `Schema.decode` for provider payloads
-- `Array` module from `effect` (not lodash)
+- `Array` utilities from `effect`
 
-**Test:** A `Message[]` with tool results transforms correctly for each provider. Snapshot test the output shape.
-
----
-
-- [ ] **1.5 — Streaming Core**
-
-**Maps to:** `src/stream.ts`, `src/utils/event-stream.ts`
-**Build:** `stream(model, context)` → `Stream<StreamEvent, LLMError>`. Wraps provider SDK streams. Normalizes events: `text_delta`, `tool_use_start/delta/end`, `usage`, `thinking_delta`.
-
-**Effect primitives:**
-- `Stream.fromAsyncIterable` — wrap SDK async iterables
-- `Stream.mapEffect`, `Stream.tap`
-- `Stream.catchAll`, `Stream.ensuring`
-- `Stream.runCollect`, `Stream.runFold` for consuming
-
-**Test:** Mock a provider that emits 3 chunks. Assert `Stream.runCollect` yields the right `StreamEvent[]`. Assert errors surface as typed `LLMError`.
+**Test:** Tool results, thinking blocks, and replayed conversations transform correctly. Snapshot provider payloads only after canonical reducer tests already pass.
 
 ---
 
-- [ ] **1.6 — Provider Implementations**
+- [ ] **1.7 — Provider Expansion + Usage / Overflow**
 
-**Maps to:** `src/providers/anthropic.ts`, `src/providers/openai-responses.ts`, `src/providers/google.ts`, `src/providers/openai-completions.ts`
-**Build:** One `Layer` per provider. Each takes `AuthStorage` as dependency, builds the API client, implements `stream()`.
+**Maps to:** provider files under `src/providers/`, `src/utils/overflow.ts`, `src/models.ts`
+**Build:** Add the rest of the providers one by one only after the first vertical slice is stable. As each provider lands, keep everything normalized to the same `StreamEvent` union. Add usage aggregation, cost calculation, and overflow classification only after at least two providers share the same reducer path.
+
+**Files to change/create:**
+- create `packages/ai/src/providers/anthropic.ts`
+- create `packages/ai/src/providers/google.ts`
+- create `packages/ai/src/providers/openai-completions.ts`
+- create `packages/ai/src/providers/azure-openai-responses.ts`
+- create `packages/ai/src/providers/simple-options.ts`
+- create `packages/ai/src/utils/overflow.ts`
+- change `packages/ai/src/models.ts`
+- change `packages/ai/src/api-registry.ts`
+- change `packages/ai/src/providers/register-builtins.ts`
+- change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Layer.effect` with `AuthStorage` dependency
-- `Effect.acquireRelease` — SDK client lifecycle
-- `Effect.tryPromise` with error mapping
-- `Layer.provide`, `Layer.merge`
+- `Layer.effect`, `Layer.provide`, `Layer.merge`
+- `Metric.counter`, `Metric.gauge`
+- `Stream.runFold`
+- `Effect.withSpan`
 
-**Test:** Each provider layer resolves with a real (or mocked) client. Swap layers in tests without changing logic.
+**Test:** Provider contract tests per provider. Shared usage/cost/overflow tests run against canonical events instead of provider-specific partial state.
 
 ---
 
-- [ ] **1.7 — Token Usage & Cost Tracking**
+- [ ] **1.8 — OAuth + Long-Tail Providers**
 
-**Maps to:** `src/utils/overflow.ts`, test files `tokens.test.ts`, `total-tokens.test.ts`
-**Build:** Accumulate `usage` events from stream. Compute cost using model's `inputCostPer1k` / `outputCostPer1k`. Expose as a `Metric`.
+**Maps to:** `src/oauth.ts`, `src/utils/oauth/`, long-tail provider files
+**Build:** Leave the messy auth and provider tails for last: PKCE, refresh, Copilot, Gemini CLI, Codex, Bedrock, Vertex, Antigravity. By this point the canonical domain, reducer, provider algebra, registry, config, and one-to-many provider path should already be stable.
+
+**Files to change/create:**
+- create `packages/ai/src/utils/oauth/index.ts`
+- create `packages/ai/src/utils/oauth/pkce.ts`
+- create `packages/ai/src/utils/oauth/anthropic.ts`
+- create `packages/ai/src/utils/oauth/github-copilot.ts`
+- create `packages/ai/src/utils/oauth/google-antigravity.ts`
+- create `packages/ai/src/utils/oauth/google-gemini-cli.ts`
+- create `packages/ai/src/utils/oauth/openai-codex.ts`
+- create `packages/ai/src/providers/google-gemini-cli.ts`
+- create `packages/ai/src/providers/openai-codex-responses.ts`
+- create `packages/ai/src/providers/google-vertex.ts`
+- create `packages/ai/src/providers/amazon-bedrock.ts`
+- create `packages/ai/src/providers/github-copilot-headers.ts`
+- create `packages/ai/src/bedrock-provider.ts`
+- change `packages/ai/src/oauth.ts`
+- change `packages/ai/src/api-registry.ts`
+- change `packages/ai/src/providers/register-builtins.ts`
+- change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Metric.counter`, `Metric.gauge` — token/cost tracking
-- `Stream.runFold` — accumulate usage over stream
-- `Effect.withSpan` — trace a completion call
+- `Effect.acquireRelease`
+- `Schedule.exponential`
+- `HttpClient`
+- `Layer.effect`
 
-**Test:** After consuming a stream, total tokens and cost are correct. Metrics are queryable.
-
----
-
-- [ ] **1.8 — OAuth Support**
-
-**Maps to:** `src/oauth.ts`, `src/utils/oauth/` (anthropic, github-copilot, google-gemini-cli, pkce)
-**Build:** `OAuthService` — handles PKCE flow, token storage, refresh. Providers that need OAuth (Copilot, Gemini CLI) use it instead of API keys.
-
-**Effect primitives:**
-- `Effect.acquireRelease` — token lifecycle
-- `Schedule.exponential` — retry on token expiry
-- `HttpClient` from `@effect/platform` — PKCE token exchange
-
-**Test:** Token refresh is retried with backoff. Expired token triggers re-auth flow.
+**Test:** Token refresh, retry, re-auth, and provider-specific OAuth flows. Long-tail provider tests only after shared streaming semantics are already stable.
 
 ---
 
@@ -133,9 +217,75 @@
 - [ ] Token usage + cost computed per call
 - [ ] Message transformation for all 3 provider families
 - [ ] All errors are typed `Data.TaggedError` subtypes
+- [ ] `stream` is the primitive API; `complete` is derived by folding canonical events
+- [ ] One provider works end-to-end before registry/auth/provider expansion starts
 
-Optional add on: 
-- [ ] Add support for models.dev to parse the json and get the models.
+### Project 1 End-State Service Graph
+
+Keep this as the target architecture for `@pi-effect/ai`.
+Do not build all of this upfront. Reach it through the vertical slices above.
+
+**Owned services in this package:**
+- `AiClient` — public facade: `stream`, `complete`, maybe `streamSimple`, `completeSimple`
+- `ProviderRegistry` — resolve provider implementations and register built-ins
+- `ModelCatalog` — `getModel`, `getModels`, `getProviders`, cost metadata
+- `AuthResolver` — resolve auth for a provider/model without leaking env/file/OAuth logic
+- `OAuthService` — login / refresh / token lifecycle for the providers that need it
+
+**Provider extension point:**
+- `Provider` stays a plain interface/algebra, not a top-level business service
+- each concrete provider gets its own live layer: `OpenAIResponsesLive`, `AnthropicLive`, `GoogleLive`, `AzureOpenAIResponsesLive`, and long-tail provider layers later
+
+**Pure modules first, not services by default:**
+- canonical schemas and domain types
+- typed error definitions
+- event folding / `reduceAssistantEvent`
+- usage + cost calculation
+- stop-reason mapping
+- message normalization helpers
+- provider payload encode/decode helpers
+- message transformation logic unless state/config pressure proves it should become a service
+- tool validation unless the package later needs multiple swappable validator implementations
+
+**External environment / infra services, not owned business services:**
+- `HttpClient`
+- `Config`
+- `Clock`
+- `Random`
+- `FileSystem` / `Path`
+
+**Construction rule:**
+- user-facing code depends on services
+- startup wiring composes layers
+- provider layers depend on infra services from the environment
+- `complete` stays derived from `stream`
+
+```mermaid
+flowchart TD
+  A["Public API\nstream / complete / getModel"] --> B["AiClient service"]
+
+  B --> C["ProviderRegistry service"]
+  B --> D["ModelCatalog service"]
+  B --> E["AuthResolver service"]
+
+  C --> F["Provider interface"]
+  F --> G["OpenAIResponsesLive"]
+  F --> H["AnthropicLive"]
+  F --> I["GoogleLive"]
+  F --> J["Other provider live layers"]
+
+  E --> K["OAuthService"]
+
+  G --> L["HttpClient / Config / Clock"]
+  H --> L
+  I --> L
+  J --> L
+
+  M["Pure modules\nschemas / reducer / transforms / cost"] -.used by.-> B
+  M -.used by.-> F
+```
+
+Optional add on:
 - [ ] Add support for OpenAI Websocket connections.
 
 ---
@@ -487,7 +637,7 @@ Hook events:
 **Effect primitives:**
 - `@effect/cli` — `Command`, `Options`, `Args`
 - `Effect.matchCauseEffect` — top-level error handler
-- `NodeRuntime.runMain` — signal handling, exit codes
+- `BunRuntime.runMain` — signal handling, exit codes
 - `Layer` — full app layer composed here
 
 **Test:** Each CLI flag routes to correct mode. Unknown flag → help text. `pi install` runs without starting agent.
@@ -525,15 +675,13 @@ Optional Add ons:
 
 | Primitive | Introduced in |
 |---|---|
-| `Effect<A,E,R>`, `Effect.gen`, `Effect.tryPromise` | 1.1 |
-| `Schema.Struct/Union/Class`, `Data.TaggedError` | 1.1 |
-| `Context.Tag`, `Layer.succeed` | 1.2 |
-| `Ref<A>` | 1.2 |
-| `Layer.effect`, `Effect.orElse/catchTag` | 1.3 |
-| `Config`, `ConfigProvider` | 1.3 |
-| `Stream<A,E,R>`, `Stream.fromAsyncIterable` | 1.5 |
-| `Stream.runCollect/runFold/tap` | 1.5 |
-| `Effect.acquireRelease` | 1.6 |
+| `Effect<A,E,R>`, `Schema.Struct/Union/Literal`, `Data.TaggedError` | 1.1 |
+| `Context.Tag`, `Layer.succeed`, `Effect.fn`, `Effect.gen` | 1.2 |
+| `Stream<A,E,R>`, `Stream.runFold` | 1.2 |
+| `Layer.effect`, `Effect.tryPromise`, `Stream.asyncScoped`, `Stream.fromQueue` | 1.3 |
+| `Ref<A>` | 1.4 |
+| `Config`, `Schema.Config`, `ConfigProvider`, `Effect.orElse/catchTag` | 1.5 |
+| `Schema.encode/decode` | 1.6 |
 | `Metric.counter/gauge` | 1.7 |
 | `Effect.withSpan`, `Tracer` | 1.7 |
 | `HttpClient` | 1.8 |
@@ -551,7 +699,7 @@ Optional Add ons:
 | `Schedule` | 3.10 |
 | `ManagedRuntime` | 3.11 |
 | `@effect/cli` `Command/Options/Args` | 3.15 |
-| `NodeRuntime.runMain` | 3.15 |
+| `BunRuntime.runMain` | 3.15 |
 | `Channel` | 3.13 |
 
 ---
@@ -566,45 +714,45 @@ For every step:
 
 ### Project 1 (`@pi-effect/ai`)
 
-- **1.1 Types & Schema**
-  - `pi-mono` functions/types: `packages/ai/src/types.ts` (`KnownApi`, `KnownProvider`, `Message`, `Tool`, `Model`, `AssistantMessageEvent`).
-  - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `empty.test.ts`, `unicode-surrogate.test.ts` (type-level behavior shows up here).
-  - Required output files in `pi-effect`: `packages/ai/src/types.ts`.
+- **1.1 Canonical Domain + Errors**
+  - `pi-mono` functions/types: `packages/ai/src/types.ts` (`KnownApi`, `KnownProvider`, `Message`, `Tool`, `Model`, `AssistantMessageEvent`), `packages/ai/src/utils/event-stream.ts` (event/result split).
+  - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `empty.test.ts`, `unicode-surrogate.test.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/types.ts`, `packages/ai/src/errors.ts`, `packages/ai/src/assistant-events.ts`, `packages/ai/src/reduce-assistant-event.ts`, `packages/ai/src/index.ts`.
 
-- **1.2 Provider Service + Registry**
+- **1.2 Provider Algebra + Public AI Client**
+  - `pi-mono` functions/classes: `stream`, `streamSimple` (`stream.ts`), `EventStream`, `AssistantMessageEventStream`, `createAssistantMessageEventStream` (`utils/event-stream.ts`).
+  - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `abort.test.ts`, `empty.test.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/provider.ts`, `packages/ai/src/ai-client.ts`, `packages/ai/src/stream.ts`, `packages/ai/src/utils/event-stream.ts`, `packages/ai/src/index.ts`.
+
+- **1.3 OpenAI Responses First Vertical Slice**
+  - `pi-mono` functions: `streamOpenAIResponses`, `streamSimpleOpenAIResponses` (`providers/openai-responses.ts`), `convertResponsesMessages`, `convertResponsesTools`, `processResponsesStream` (`providers/openai-responses-shared.ts`), `parseStreamingJson` (`utils/json-parse.ts`).
+  - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `interleaved-thinking.test.ts`, `abort.test.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/providers/openai-responses.ts`, `packages/ai/src/providers/openai-responses-shared.ts`, `packages/ai/src/utils/json-parse.ts`, plus adjustments in `packages/ai/src/provider.ts`, `packages/ai/src/ai-client.ts`, `packages/ai/src/stream.ts`.
+
+- **1.4 Model Catalog + Provider Registry**
   - `pi-mono` functions: `registerApiProvider`, `getApiProvider`, `getApiProviders`, `unregisterApiProviders`, `clearApiProviders` (`api-registry.ts`), `getModel`, `getProviders`, `getModels`, `calculateCost` (`models.ts`), `registerBuiltInApiProviders`, `resetApiProviders` (`providers/register-builtins.ts`).
   - Parity tests to port/run: `packages/ai/test/bedrock-models.test.ts`, `supports-xhigh.test.ts`, `zen.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/api-registry.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/api-registry.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`, plus wiring changes in `packages/ai/src/ai-client.ts`.
 
-- **1.3 Auth Storage**
+- **1.5 Config + Auth Boundary**
   - `pi-mono` functions: `getEnvApiKey` (`env-api-keys.ts`), `getOAuthApiKey`, `refreshOAuthToken`, `registerOAuthProvider`, `getOAuthProvider` (`utils/oauth/index.ts`).
   - Parity tests to port/run: `packages/ai/test/oauth.ts`, plus auth-sensitive flows in `stream.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/env-api-keys.ts`, `packages/ai/src/oauth.ts`, `packages/ai/src/utils/oauth/types.ts`, `packages/ai/src/utils/oauth/index.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/env-api-keys.ts`, `packages/ai/src/auth-resolver.ts`, `packages/ai/src/oauth.ts`, `packages/ai/src/utils/oauth/types.ts`.
 
-- **1.4 Message Transformation**
+- **1.6 Message Transformation Boundary**
   - `pi-mono` functions: `transformMessages`, `convertResponsesMessages`, `convertResponsesTools`, `convertMessages` (`openai-completions.ts`), `convertTools`, `mapToolChoice`, `mapStopReason` (`google-shared.ts`).
   - Parity tests to port/run: `transform-messages-copilot-openai-to-anthropic.test.ts`, `google-tool-call-missing-args.test.ts`, `tool-call-without-result.test.ts`, `image-tool-result.test.ts`.
   - Required output files in `pi-effect`: `packages/ai/src/providers/transform-messages.ts`, `packages/ai/src/providers/openai-responses-shared.ts`, `packages/ai/src/providers/google-shared.ts`.
 
-- **1.5 Streaming Core**
-  - `pi-mono` functions/classes: `stream`, `streamSimple` (`stream.ts`), `EventStream`, `AssistantMessageEventStream`, `createAssistantMessageEventStream` (`utils/event-stream.ts`), `parseStreamingJson` (`utils/json-parse.ts`).
-  - Parity tests to port/run: `stream.test.ts`, `abort.test.ts`, `empty.test.ts`, `interleaved-thinking.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/stream.ts`, `packages/ai/src/utils/event-stream.ts`, `packages/ai/src/utils/json-parse.ts`.
+- **1.7 Provider Expansion + Usage / Overflow**
+  - `pi-mono` functions: `streamAnthropic`, `streamOpenAICompletions`, `streamGoogle`, `streamAzureOpenAIResponses`, `calculateCost`, `supportsXhigh`, `isContextOverflow`, `getOverflowPatterns`.
+  - Parity tests to port/run: `stream.test.ts`, `tokens.test.ts`, `total-tokens.test.ts`, `context-overflow.test.ts`, `cache-retention.test.ts`, `xhigh.test.ts`, `supports-xhigh.test.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/providers/anthropic.ts`, `packages/ai/src/providers/google.ts`, `packages/ai/src/providers/openai-completions.ts`, `packages/ai/src/providers/azure-openai-responses.ts`, `packages/ai/src/providers/simple-options.ts`, `packages/ai/src/utils/overflow.ts`, plus updates in `packages/ai/src/models.ts`, `packages/ai/src/api-registry.ts`, `packages/ai/src/providers/register-builtins.ts`.
 
-- **1.6 Provider Implementations**
-  - `pi-mono` functions: `streamAnthropic`, `streamOpenAIResponses`, `streamOpenAICompletions`, `streamGoogle`, `streamAzureOpenAIResponses`, `streamGoogleVertex`, `streamOpenAICodexResponses`, `streamBedrock` and their `streamSimple*` variants.
-  - Parity tests to port/run: `stream.test.ts`, `openai-codex-stream.test.ts`, `cross-provider-handoff.test.ts`, `tool-call-id-normalization.test.ts`, `bedrock-models.test.ts`.
-  - Required output files in `pi-effect`: all provider files under `packages/ai/src/providers/` listed in the source manifest below.
-
-- **1.7 Token Usage & Cost Tracking**
-  - `pi-mono` functions: `calculateCost`, `supportsXhigh` (`models.ts`), `isContextOverflow`, `getOverflowPatterns` (`utils/overflow.ts`).
-  - Parity tests to port/run: `tokens.test.ts`, `total-tokens.test.ts`, `context-overflow.test.ts`, `cache-retention.test.ts`, `xhigh.test.ts`, `supports-xhigh.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/models.ts`, `packages/ai/src/utils/overflow.ts`.
-
-- **1.8 OAuth Support**
-  - `pi-mono` functions: provider login/refresh flows in `utils/oauth/anthropic.ts`, `github-copilot.ts`, `google-gemini-cli.ts`, `openai-codex.ts`, plus `generatePKCE` (`pkce.ts`).
-  - Parity tests to port/run: `oauth.ts`, `github-copilot-anthropic.test.ts`, `google-gemini-cli-empty-stream.test.ts`, `google-gemini-cli-retry-delay.test.ts`, `google-gemini-cli-claude-thinking-header.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/utils/oauth/*.ts` parity with manifest.
+- **1.8 OAuth + Long-Tail Providers**
+  - `pi-mono` functions: provider login/refresh flows in `utils/oauth/anthropic.ts`, `github-copilot.ts`, `google-gemini-cli.ts`, `openai-codex.ts`, plus `generatePKCE` (`pkce.ts`), plus `streamGoogleVertex`, `streamOpenAICodexResponses`, `streamBedrock`.
+  - Parity tests to port/run: `oauth.ts`, `github-copilot-anthropic.test.ts`, `google-gemini-cli-empty-stream.test.ts`, `google-gemini-cli-retry-delay.test.ts`, `google-gemini-cli-claude-thinking-header.test.ts`, `openai-codex-stream.test.ts`, `cross-provider-handoff.test.ts`, `tool-call-id-normalization.test.ts`, `bedrock-models.test.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/utils/oauth/*.ts`, `packages/ai/src/providers/google-gemini-cli.ts`, `packages/ai/src/providers/openai-codex-responses.ts`, `packages/ai/src/providers/google-vertex.ts`, `packages/ai/src/providers/amazon-bedrock.ts`, `packages/ai/src/providers/github-copilot-headers.ts`, `packages/ai/src/bedrock-provider.ts`.
 
 ### Project 2 (`@pi-effect/agent`)
 
