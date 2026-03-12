@@ -10,9 +10,11 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
-    "typecheck": "tsc --noEmit",
-    "start": "bun dist/index.js"
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "bun dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   }
 }
