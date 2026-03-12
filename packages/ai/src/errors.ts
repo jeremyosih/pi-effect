@@ -1,8 +1,8 @@
 import { Schema as S } from "effect";
 
-export class ProviderNotFoundError extends S.TaggedErrorClass<ProviderNotFoundError>(
-  "ProviderNotFoundError",
-)("ProviderNotFoundError", {
+export class ProviderNotFound extends S.TaggedErrorClass<ProviderNotFound>(
+  "ProviderNotFound",
+)("ProviderNotFound", {
   api: S.String,
 }) {}
 
@@ -79,7 +79,7 @@ export const ReducerError = S.Union([
 ]);
 
 export const AiError = S.Union([
-  ProviderNotFoundError,
+  ProviderNotFound,
   AuthMissing,
   ProviderHttpError,
   ProviderProtocolError,
