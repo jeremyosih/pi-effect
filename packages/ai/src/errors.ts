@@ -78,12 +78,16 @@ export const ReducerError = S.Union([
   ReducerTerminalStateViolation,
 ]);
 
-export const AiError = S.Union([
-  ProviderNotFound,
+export const ProviderStreamError = S.Union([
   AuthMissing,
   ProviderHttpError,
   ProviderProtocolError,
   ToolValidationError,
   Aborted,
+]);
+
+export const AiError = S.Union([
+  ProviderNotFound,
+  ProviderStreamError,
   ReducerError,
 ]);

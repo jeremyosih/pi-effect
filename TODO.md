@@ -11,7 +11,7 @@
 
 ---
 
-- [ ] **1.1 — Canonical Domain + Errors**
+- [x] **1.1 — Canonical Domain + Errors**
 
 **Maps to:** `src/types.ts`, `src/index.ts`
 **Build:** Lock the canonical AI language first: `Model`, `Message`, `ContentBlock`, `Tool`, `ToolCall`, `AssistantMessage`, `Usage`, `StopReason`, `StreamEvent`. Keep this slice pure. Add typed error families before any provider work. Do not add HTTP, env, OAuth, registries, or provider SDKs here.
@@ -33,27 +33,30 @@
 
 ---
 
-- [ ] **1.2 — Provider Algebra + Public AI Client**
+- [x] **1.2 — Provider Algebra + Public Stream Facade**
 
-**Maps to:** `src/stream.ts`, `src/index.ts`
-**Build:** Define the minimal provider contract and the public façade before registries. `stream` is primitive. `complete` is derived by folding the same event stream. Keep this slice provider-agnostic and wire it with one fake provider in tests.
+**Maps to:** `src/provider.ts`, `src/stream.ts`, `src/index.ts`
+**Build:** Define the minimal provider contract and the public exported stream facade. `ProviderRegistry` is the only owned service in this slice. `stream` is primitive. `complete` and `completeSimple` are derived by folding the exact same canonical event stream. Keep the provider error channel honest: provider streams only model provider-originating failures, while registry/facade failures stay outside the provider algebra. Keep this slice provider-agnostic and wire it with one fake provider in tests.
+
+**Adjustment note:** The original plan required a dedicated `AiClient` service here. The implementation showed that a thin `AiClient` layer just re-exported `stream.ts` while still leaking `ProviderRegistry` into every caller. Because `pi-mono` exposes plain module functions at this stage, keep the public API as exported functions for now and defer an injectable `AiClient` until a downstream package actually needs one.
 
 **Files to change/create:**
 - create `packages/ai/src/provider.ts`
-- create `packages/ai/src/ai-client.ts`
 - create `packages/ai/src/stream.ts`
+- create/change `packages/ai/src/utils/assistant-events.ts`
 - create `packages/ai/src/utils/event-stream.ts` only if a compatibility wrapper is still needed
 - replace any placeholder use of `packages/ai/src/utils/event-streams.ts`
 - change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Context.Tag` for owned services
+- `ServiceMap.Service` for owned services in v4 beta
 - `Layer.succeed` for the first in-memory wiring
 - `Effect.fn`, `Effect.gen`
 - `Stream<A,E,R>` as the provider return type
 - `Stream.runFold` to derive `complete` from `stream`
+- `Option` to model "no terminal assistant message yet"
 
-**Test:** A fake provider emits canonical `StreamEvent`s. `AiClient.stream` exposes them unchanged. `AiClient.complete` folds the exact same events into the final `AssistantMessage`.
+**Test:** A fake provider emits canonical `AssistantMessageEvent`s. Exported `stream` exposes them unchanged. `complete` folds the exact same events into the final `AssistantMessage`. `completeSimple` proves the simple path dispatches to provider `streamSimple`.
 
 ---
 
@@ -66,7 +69,6 @@
 - create `packages/ai/src/providers/openai-responses.ts`
 - create `packages/ai/src/providers/openai-responses-shared.ts`
 - change `packages/ai/src/provider.ts`
-- change `packages/ai/src/ai-client.ts`
 - change `packages/ai/src/stream.ts`
 - change `packages/ai/src/index.ts`
 
@@ -91,11 +93,11 @@
 - create `packages/ai/src/api-registry.ts`
 - create `packages/ai/src/providers/register-builtins.ts`
 - change `packages/ai/src/providers/openai-responses.ts`
-- change `packages/ai/src/ai-client.ts`
+- change `packages/ai/src/stream.ts`
 - change `packages/ai/src/index.ts`
 
 **Effect primitives:**
-- `Context.Tag`
+- `ServiceMap.Service`
 - `Layer.succeed`
 - `Ref<HashMap<...>>` only if runtime registration is required
 - prefer static layer composition for built-ins first
@@ -115,7 +117,6 @@
 - create `packages/ai/src/oauth.ts`
 - create `packages/ai/src/utils/oauth/types.ts`
 - change `packages/ai/src/providers/openai-responses.ts`
-- change `packages/ai/src/ai-client.ts`
 - change `packages/ai/src/index.ts`
 
 **Effect primitives:**
@@ -226,11 +227,13 @@ Keep this as the target architecture for `@pi-effect/ai`.
 Do not build all of this upfront. Reach it through the vertical slices above.
 
 **Owned services in this package:**
-- `AiClient` — public facade: `stream`, `complete`, maybe `streamSimple`, `completeSimple`
 - `ProviderRegistry` — resolve provider implementations and register built-ins
 - `ModelCatalog` — `getModel`, `getModels`, `getProviders`, cost metadata
 - `AuthResolver` — resolve auth for a provider/model without leaking env/file/OAuth logic
 - `OAuthService` — login / refresh / token lifecycle for the providers that need it
+
+**Public API note:**
+- keep the top-level AI facade as plain exported module functions unless a downstream package proves it needs an injected `AiClient` service
 
 **Provider extension point:**
 - `Provider` stays a plain interface/algebra, not a top-level business service
@@ -255,14 +258,14 @@ Do not build all of this upfront. Reach it through the vertical slices above.
 - `FileSystem` / `Path`
 
 **Construction rule:**
-- user-facing code depends on services
+- user-facing code depends on the public facade; internal wiring composes services
 - startup wiring composes layers
 - provider layers depend on infra services from the environment
 - `complete` stays derived from `stream`
 
 ```mermaid
 flowchart TD
-  A["Public API\nstream / complete / getModel"] --> B["AiClient service"]
+  A["Public API module\nstream / complete / getModel"] --> B["stream.ts facade"]
 
   B --> C["ProviderRegistry service"]
   B --> D["ModelCatalog service"]
@@ -676,7 +679,7 @@ Optional Add ons:
 | Primitive | Introduced in |
 |---|---|
 | `Effect<A,E,R>`, `Schema.Struct/Union/Literal`, `Data.TaggedError` | 1.1 |
-| `Context.Tag`, `Layer.succeed`, `Effect.fn`, `Effect.gen` | 1.2 |
+| `ServiceMap.Service`, `Layer.succeed`, `Effect.fn`, `Effect.gen`, `Option` | 1.2 |
 | `Stream<A,E,R>`, `Stream.runFold` | 1.2 |
 | `Layer.effect`, `Effect.tryPromise`, `Stream.asyncScoped`, `Stream.fromQueue` | 1.3 |
 | `Ref<A>` | 1.4 |
@@ -719,20 +722,20 @@ For every step:
   - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `empty.test.ts`, `unicode-surrogate.test.ts`.
   - Required output files in `pi-effect`: `packages/ai/src/types.ts`, `packages/ai/src/errors.ts`, `packages/ai/src/assistant-events.ts`, `packages/ai/src/reduce-assistant-event.ts`, `packages/ai/src/index.ts`.
 
-- **1.2 Provider Algebra + Public AI Client**
+- **1.2 Provider Algebra + Public Stream Facade**
   - `pi-mono` functions/classes: `stream`, `streamSimple` (`stream.ts`), `EventStream`, `AssistantMessageEventStream`, `createAssistantMessageEventStream` (`utils/event-stream.ts`).
   - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `abort.test.ts`, `empty.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/provider.ts`, `packages/ai/src/ai-client.ts`, `packages/ai/src/stream.ts`, `packages/ai/src/utils/event-stream.ts`, `packages/ai/src/index.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/provider.ts`, `packages/ai/src/stream.ts`, `packages/ai/src/utils/assistant-events.ts`, optional `packages/ai/src/utils/event-stream.ts`, `packages/ai/src/index.ts`.
 
 - **1.3 OpenAI Responses First Vertical Slice**
   - `pi-mono` functions: `streamOpenAIResponses`, `streamSimpleOpenAIResponses` (`providers/openai-responses.ts`), `convertResponsesMessages`, `convertResponsesTools`, `processResponsesStream` (`providers/openai-responses-shared.ts`), `parseStreamingJson` (`utils/json-parse.ts`).
   - Parity tests to port/run: `packages/ai/test/stream.test.ts`, `interleaved-thinking.test.ts`, `abort.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/providers/openai-responses.ts`, `packages/ai/src/providers/openai-responses-shared.ts`, `packages/ai/src/utils/json-parse.ts`, plus adjustments in `packages/ai/src/provider.ts`, `packages/ai/src/ai-client.ts`, `packages/ai/src/stream.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/providers/openai-responses.ts`, `packages/ai/src/providers/openai-responses-shared.ts`, `packages/ai/src/utils/json-parse.ts`, plus adjustments in `packages/ai/src/provider.ts`, `packages/ai/src/stream.ts`.
 
 - **1.4 Model Catalog + Provider Registry**
   - `pi-mono` functions: `registerApiProvider`, `getApiProvider`, `getApiProviders`, `unregisterApiProviders`, `clearApiProviders` (`api-registry.ts`), `getModel`, `getProviders`, `getModels`, `calculateCost` (`models.ts`), `registerBuiltInApiProviders`, `resetApiProviders` (`providers/register-builtins.ts`).
   - Parity tests to port/run: `packages/ai/test/bedrock-models.test.ts`, `supports-xhigh.test.ts`, `zen.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/api-registry.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`, plus wiring changes in `packages/ai/src/ai-client.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/api-registry.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`, plus wiring changes in `packages/ai/src/stream.ts` and `packages/ai/src/index.ts`.
 
 - **1.5 Config + Auth Boundary**
   - `pi-mono` functions: `getEnvApiKey` (`env-api-keys.ts`), `getOAuthApiKey`, `refreshOAuthToken`, `registerOAuthProvider`, `getOAuthProvider` (`utils/oauth/index.ts`).

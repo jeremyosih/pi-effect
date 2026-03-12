@@ -11,7 +11,7 @@ import type {
 
 export type ProviderStream = Stream.Stream<
   AssistantMessageEvent,
-  typeof Errors.AiError.Type
+  typeof Errors.ProviderStreamError.Type
 >;
 
 export interface ApiProvider {
