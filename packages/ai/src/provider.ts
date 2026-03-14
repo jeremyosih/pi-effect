@@ -4,25 +4,22 @@ import type {
   Api,
   AssistantMessageEvent,
   Context,
-  ProviderModel,
+  ProviderModel as Model,
   SimpleStreamOptions,
   StreamOptions,
 } from "./types.ts";
 
-export type ProviderStream = Stream.Stream<
-  AssistantMessageEvent,
-  typeof Errors.ProviderStreamError.Type
->;
+export type ProviderStream = Stream.Stream<AssistantMessageEvent>;
 
 export interface ApiProvider {
   readonly api: Api;
   readonly stream: (
-    model: ProviderModel,
+    model: Model,
     context: Context,
     options?: StreamOptions,
   ) => ProviderStream;
   readonly streamSimple: (
-    model: ProviderModel,
+    model: Model,
     context: Context,
     options?: SimpleStreamOptions,
   ) => ProviderStream;

@@ -16,5 +16,9 @@
     "start": "bun dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "dependencies": {
+    "openai": "^6.27.0",
+    "partial-json": "^0.1.7"
   }
 }

@@ -283,12 +283,24 @@ export const Content = S.Union([
 ]).pipe(S.toTaggedUnion("type"));
 export type Content = typeof Content.Type;
 
-export const UserContent = S.Union([Content.cases.text, Content.cases.image]);
+export const TextContent = Content.cases.text;
+export type TextContent = typeof TextContent.Type;
+
+export const ThinkingContent = Content.cases.thinking;
+export type ThinkingContent = typeof ThinkingContent.Type;
+
+export const ImageContent = Content.cases.image;
+export type ImageContent = typeof ImageContent.Type;
+
+export const ToolCall = Content.cases.toolCall;
+export type ToolCall = typeof ToolCall.Type;
+
+export const UserContent = S.Union([TextContent, ImageContent]);
 
 export const AssistantContent = S.Union([
-  Content.cases.text,
-  Content.cases.thinking,
-  Content.cases.toolCall,
+  TextContent,
+  ThinkingContent,
+  ToolCall,
 ]);
 
 export const Cost = S.Struct({
@@ -355,8 +367,8 @@ export const PartialAssistantMessage = AssistantMessage.mapFields(
 );
 export type PartialAssistantMessage = typeof PartialAssistantMessage.Type;
 
-export const ToolResult = Message.cases.toolResult;
-export type ToolResult = typeof ToolResult.Type;
+export const ToolResultMessage = Message.cases.toolResult;
+export type ToolResultMessage = typeof ToolResultMessage.Type;
 
 export const Tool = S.Struct({
   name: S.String,

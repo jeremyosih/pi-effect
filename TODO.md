@@ -60,7 +60,7 @@
 
 ---
 
-- [ ] **1.3 — OpenAI Responses First Vertical Slice**
+- [x] **1.3 — OpenAI Responses First Vertical Slice**
 
 **Maps to:** `src/providers/openai-responses.ts`, `src/providers/openai-responses-shared.ts`, `src/stream.ts`
 **Build:** Implement exactly one real provider end-to-end: OpenAI Responses. Support text deltas, thinking deltas, tool calls, usage, stop reasons, and folding to a final message. No registry dispatch yet. No OAuth. No Bedrock. No Google.
@@ -108,13 +108,14 @@
 
 - [ ] **1.5 — Config + Auth Boundary**
 
-**Maps to:** `src/env-api-keys.ts`, `src/oauth.ts`
-**Build:** Move env access and auth lookup behind a typed boundary. Start with env/API key resolution. Keep OAuth behind an interface until the last slice. Do not let provider implementations reach into `process.env` directly.
+**Maps to:** `src/env-api-keys.ts`, `src/oauth.ts`, `src/clients/openai-client.ts`
+**Build:** Move env access and auth lookup behind a typed boundary. Start with env/API key resolution. Keep OAuth behind an interface until the last slice. Do not let provider implementations reach into `process.env` directly. Extract OpenAI SDK construction behind a v4 `ServiceMap.Service` wrapper with named methods like `createResponsesStream(...)`, rather than rebuilding clients ad hoc inside providers.
 
 **Files to change/create:**
 - create `packages/ai/src/env-api-keys.ts`
 - create `packages/ai/src/auth-resolver.ts`
 - create `packages/ai/src/oauth.ts`
+- create `packages/ai/src/clients/openai-client.ts`
 - create `packages/ai/src/utils/oauth/types.ts`
 - change `packages/ai/src/providers/openai-responses.ts`
 - change `packages/ai/src/index.ts`
@@ -122,11 +123,15 @@
 **Effect primitives:**
 - `Config`
 - `Schema.Config`
+- `Config.redacted`
+- `Redacted`
+- `ServiceMap.Service`
 - `Layer.effect`
+- `Effect.tryPromise`
 - `Effect.orElse`, `Effect.catchTag`
 - `@effect/platform` services only at the boundary
 
-**Test:** Reads key from env via typed config. Missing auth is typed. Provider code depends on `AuthResolver`, not raw env lookup.
+**Test:** Reads key from env via typed config. Missing auth is typed. Provider code depends on `AuthResolver` / `OpenAIClient`, not raw env lookup or inline SDK construction.
 
 ---
 
@@ -220,6 +225,66 @@
 - [ ] All errors are typed `Data.TaggedError` subtypes
 - [ ] `stream` is the primitive API; `complete` is derived by folding canonical events
 - [ ] One provider works end-to-end before registry/auth/provider expansion starts
+
+Final Provider File-tree Structure:
+
+packages/ai/src/providers/
+  simple-options.ts
+  simple-options.test.ts
+  transform-messages.ts
+  transform-messages.test.ts
+  github-copilot-headers.ts
+  github-copilot-headers.test.ts
+
+  openai/
+    client.ts
+    client.test.ts
+    responses-shared.ts
+    responses-shared.test.ts
+    responses.ts
+    responses.test.ts
+    completions.ts
+    completions.test.ts
+    azure-client.ts
+    azure-client.test.ts
+    azure-responses.ts
+    azure-responses.test.ts
+    codex-client.ts
+    codex-client.test.ts
+    codex-responses.ts
+    codex-responses.test.ts
+
+  google/
+    client.ts
+    client.test.ts
+    shared.ts
+    shared.test.ts
+    generative-ai.ts
+    generative-ai.test.ts
+    vertex.ts
+    vertex.test.ts
+    gemini-cli-client.ts
+    gemini-cli-client.test.ts
+    gemini-cli.ts
+    gemini-cli.test.ts
+
+  anthropic-client.ts
+  anthropic-client.test.ts
+  anthropic.ts
+  anthropic.test.ts
+
+  mistral-client.ts
+  mistral-client.test.ts
+  mistral.ts
+  mistral.test.ts
+
+  bedrock-client.ts
+  bedrock-client.test.ts
+  amazon-bedrock.ts
+  amazon-bedrock.test.ts
+
+  register-builtins.ts
+
 
 ### Project 1 End-State Service Graph
 
