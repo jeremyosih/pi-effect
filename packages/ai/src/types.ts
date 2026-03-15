@@ -116,6 +116,8 @@ export const KnownApi = S.Literals([
   "google-vertex",
   "mistral-conversations",
 ]);
+export type KnownApi = typeof KnownApi.Type;
+
 export const Api = S.Union([KnownApi, S.String]);
 export type Api = typeof KnownApi.Type | ({} & string);
 
@@ -144,6 +146,8 @@ export const KnownProvider = S.Literals([
   "opencode-go",
   "kimi-coding",
 ]);
+export type KnownProvider = typeof KnownProvider.Type;
+
 export const Provider = S.Union([KnownProvider, S.String]);
 export type Provider = typeof Provider.Type | ({} & string);
 

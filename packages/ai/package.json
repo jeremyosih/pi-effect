@@ -11,10 +11,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch",
+    "dev": "tsgo -p tsconfig.build.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "bun dist/index.js",
     "test": "vitest run",
+    "generate-models": "npx tsx scripts/generate-models.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

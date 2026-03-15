@@ -83,18 +83,19 @@
 
 ---
 
-- [ ] **1.4 — Model Catalog + Provider Registry**
+- [x] **1.4 — Model Catalog + Provider Registry**
 
-**Maps to:** `src/models.ts`, `src/api-registry.ts`, `src/providers/register-builtins.ts`
-**Build:** After one provider works, split model lookup from provider lookup. `ModelCatalog` owns `getModel / getModels / getProviders`. `ProviderRegistry` owns provider resolution and built-in wiring. Use mutable registration only if runtime extension loading really needs it.
+**Maps to:** `src/models.ts`, `src/provider.ts`, `src/providers/register-builtins.ts`
+**Build:** After one provider works, keep model lookup pure and split it from provider lookup. `models.ts` owns `getModel / getModels / getProviders / calculateCost` over generated data. `ProviderRegistry` owns provider resolution and built-in wiring. Do not port pi-mono's mutable `api-registry.ts` as a separate file unless runtime extension loading later proves it is needed.
 
 **Files to change/create:**
-- create `packages/ai/src/models.ts`
-- create `packages/ai/src/api-registry.ts`
+- change `packages/ai/src/models.ts`
+- change `packages/ai/src/provider.ts`
 - create `packages/ai/src/providers/register-builtins.ts`
 - change `packages/ai/src/providers/openai-responses.ts`
 - change `packages/ai/src/stream.ts`
 - change `packages/ai/src/index.ts`
+- change `packages/ai/scripts/generate-models.ts`
 
 **Effect primitives:**
 - `ServiceMap.Service`
@@ -102,7 +103,7 @@
 - `Ref<HashMap<...>>` only if runtime registration is required
 - prefer static layer composition for built-ins first
 
-**Test:** `getModel`, `getModels`, `getProviders` work from the catalog. Unknown model/provider resolves to typed errors. Registry dispatch sends OpenAI models to the OpenAI layer.
+**Test:** `getModel`, `getModels`, `getProviders` work from the pure catalog. Unknown model stays a pure miss (`undefined`), while unknown provider resolves to a typed error via `ProviderRegistry`. Registry dispatch sends OpenAI models to the OpenAI layer. pi-mono has no dedicated catalog test file; parity is exercised indirectly by provider / stream tests plus focused `supportsXhigh` coverage.
 
 ---
 
@@ -168,7 +169,7 @@
 - create `packages/ai/src/providers/simple-options.ts`
 - create `packages/ai/src/utils/overflow.ts`
 - change `packages/ai/src/models.ts`
-- change `packages/ai/src/api-registry.ts`
+- change `packages/ai/src/provider.ts`
 - change `packages/ai/src/providers/register-builtins.ts`
 - change `packages/ai/src/index.ts`
 
@@ -202,7 +203,7 @@
 - create `packages/ai/src/providers/github-copilot-headers.ts`
 - create `packages/ai/src/bedrock-provider.ts`
 - change `packages/ai/src/oauth.ts`
-- change `packages/ai/src/api-registry.ts`
+- change `packages/ai/src/provider.ts`
 - change `packages/ai/src/providers/register-builtins.ts`
 - change `packages/ai/src/index.ts`
 
@@ -293,9 +294,11 @@ Do not build all of this upfront. Reach it through the vertical slices above.
 
 **Owned services in this package:**
 - `ProviderRegistry` — resolve provider implementations and register built-ins
-- `ModelCatalog` — `getModel`, `getModels`, `getProviders`, cost metadata
 - `AuthResolver` — resolve auth for a provider/model without leaking env/file/OAuth logic
 - `OAuthService` — login / refresh / token lifecycle for the providers that need it
+
+**Pure exported catalog module:**
+- `models.ts` — `getModel`, `getModels`, `getProviders`, `calculateCost`, `supportsXhigh`
 
 **Public API note:**
 - keep the top-level AI facade as plain exported module functions unless a downstream package proves it needs an injected `AiClient` service
@@ -333,7 +336,6 @@ flowchart TD
   A["Public API module\nstream / complete / getModel"] --> B["stream.ts facade"]
 
   B --> C["ProviderRegistry service"]
-  B --> D["ModelCatalog service"]
   B --> E["AuthResolver service"]
 
   C --> F["Provider interface"]
@@ -349,7 +351,8 @@ flowchart TD
   I --> L
   J --> L
 
-  M["Pure modules\nschemas / reducer / transforms / cost"] -.used by.-> B
+  M["Pure modules\nschemas / reducer / models / transforms / cost"] -.used by.-> A
+  M -.used by.-> B
   M -.used by.-> F
 ```
 
@@ -799,8 +802,9 @@ For every step:
 
 - **1.4 Model Catalog + Provider Registry**
   - `pi-mono` functions: `registerApiProvider`, `getApiProvider`, `getApiProviders`, `unregisterApiProviders`, `clearApiProviders` (`api-registry.ts`), `getModel`, `getProviders`, `getModels`, `calculateCost` (`models.ts`), `registerBuiltInApiProviders`, `resetApiProviders` (`providers/register-builtins.ts`).
-  - Parity tests to port/run: `packages/ai/test/bedrock-models.test.ts`, `supports-xhigh.test.ts`, `zen.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/api-registry.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`, plus wiring changes in `packages/ai/src/stream.ts` and `packages/ai/src/index.ts`.
+  - `pi-effect` absorption note: the mutable `api-registry.ts` surface is intentionally absorbed into `ProviderRegistry` in `provider.ts`; the model catalog remains a pure exported module.
+  - Parity tests to port/run: `packages/ai/test/bedrock-models.test.ts`, `supports-xhigh.test.ts`, `zen.test.ts`. pi-mono has no dedicated catalog test file.
+  - Required output files in `pi-effect`: `packages/ai/src/provider.ts`, `packages/ai/src/models.ts`, `packages/ai/src/providers/register-builtins.ts`, plus wiring changes in `packages/ai/src/stream.ts`, `packages/ai/src/index.ts`, and `packages/ai/scripts/generate-models.ts`.
 
 - **1.5 Config + Auth Boundary**
   - `pi-mono` functions: `getEnvApiKey` (`env-api-keys.ts`), `getOAuthApiKey`, `refreshOAuthToken`, `registerOAuthProvider`, `getOAuthProvider` (`utils/oauth/index.ts`).
@@ -815,7 +819,7 @@ For every step:
 - **1.7 Provider Expansion + Usage / Overflow**
   - `pi-mono` functions: `streamAnthropic`, `streamOpenAICompletions`, `streamGoogle`, `streamAzureOpenAIResponses`, `calculateCost`, `supportsXhigh`, `isContextOverflow`, `getOverflowPatterns`.
   - Parity tests to port/run: `stream.test.ts`, `tokens.test.ts`, `total-tokens.test.ts`, `context-overflow.test.ts`, `cache-retention.test.ts`, `xhigh.test.ts`, `supports-xhigh.test.ts`.
-  - Required output files in `pi-effect`: `packages/ai/src/providers/anthropic.ts`, `packages/ai/src/providers/google.ts`, `packages/ai/src/providers/openai-completions.ts`, `packages/ai/src/providers/azure-openai-responses.ts`, `packages/ai/src/providers/simple-options.ts`, `packages/ai/src/utils/overflow.ts`, plus updates in `packages/ai/src/models.ts`, `packages/ai/src/api-registry.ts`, `packages/ai/src/providers/register-builtins.ts`.
+  - Required output files in `pi-effect`: `packages/ai/src/providers/anthropic.ts`, `packages/ai/src/providers/google.ts`, `packages/ai/src/providers/openai-completions.ts`, `packages/ai/src/providers/azure-openai-responses.ts`, `packages/ai/src/providers/simple-options.ts`, `packages/ai/src/utils/overflow.ts`, plus updates in `packages/ai/src/models.ts`, `packages/ai/src/provider.ts`, `packages/ai/src/providers/register-builtins.ts`.
 
 - **1.8 OAuth + Long-Tail Providers**
   - `pi-mono` functions: provider login/refresh flows in `utils/oauth/anthropic.ts`, `github-copilot.ts`, `google-gemini-cli.ts`, `openai-codex.ts`, plus `generatePKCE` (`pkce.ts`), plus `streamGoogleVertex`, `streamOpenAICodexResponses`, `streamBedrock`.
