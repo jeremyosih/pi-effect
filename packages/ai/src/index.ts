@@ -5,3 +5,6 @@ export * from "./provider.ts";
 export * from "./providers/register-builtins.ts";
 export * from "./stream.ts";
 export * from "./utils/assistant-events.ts";
+export * from "./env-api-keys.ts";
+export * from "./auth-resolver.ts";
+export * from "./oauth.ts";

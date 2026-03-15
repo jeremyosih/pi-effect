@@ -14,20 +14,20 @@ Outcome: understanding > working code + a better pi agent.
 - `docs/smol-effect/packages/effect/src/` contains the Effect v4 beta API source.
 - ALWAYS use Effect v4 in this project.
 - NEVER trust memory for Effect v4 — it is beta, APIs are shifting.
-  Always grep `docs/effect` and `docs/smol-effect/packages/effect/src/` before answering anything about Effect
+  Always grep `docs/smol-effect` and `docs/smol-effect/packages/effect/src/` before answering anything about Effect
 - When asked to implement: explain primitives needed, why they fit,
   what tradeoffs exist. Stop there unless I explicitely ask for it.
 
 ## Effect v4 beta specifics
-- Source of truth: `docs/effect/packages/effect/src/`
+- Source of truth: `docs/smol-effect/packages/effect/src/`
 - v4 consolidates platform, rpc, cluster into core `effect` package
 - imports changed: verify every import path in source before suggesting
 - `@effect/platform-bun` is the runtime layer for this project
 - `BunRuntime.runMain` not `NodeRuntime.runMain`
-- When in doubt: `grep -r "export" docs/effect/packages/effect/src/index.ts`
+- When in doubt: `grep -r "export" docs/smol-effect/packages/effect/src/index.ts`
 
 ## Reference sources (priority order)
-1. `docs/effect/` — v4 beta source, always grep first
+1. `docs/smol-effect/` — v4 beta source, always grep first
 2. `docs/smol-effect/MIGRATION.md` + `docs/smol-effect/migration/` — migration guides
 3. `docs/smol-effect/packages/effect/src/` — Effect v4 beta API source
 4. `docs/pi-mono/` — what we are rebuilding, architectural reference
@@ -36,7 +36,7 @@ Outcome: understanding > working code + a better pi agent.
 
 ## How to answer any question
 1. check `TODO.md` for current step context
-2. grep `docs/effect/` for the primitive
+2. grep `docs/smol-effect/` for the primitive
 3. grep `docs/pi-mono/` for how pi solves the same problem
 4. explain bottom-up: primitive → why it fits → how pi-mono uses it
 5. cite file + line for every claim

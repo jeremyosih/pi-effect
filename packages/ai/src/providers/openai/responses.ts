@@ -1,6 +1,8 @@
 import { Cause, Effect, Exit, Stream } from "effect";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
-import * as Errors from "../../errors.ts";
+import { AuthMissing } from "../../auth-resolver.ts";
+import { cacheRetentionConfig } from "../../env-api-keys.ts"
+import { Aborted, ProviderProtocolError } from "../../errors.ts";
 import type { ApiProvider } from "../../provider.ts";
 import type {
   AssistantMessage,
@@ -20,7 +22,7 @@ import {
   hasCopilotVisionInput,
 } from "../github-copilot-headers.ts";
 import { buildBaseOptions, clampReasoning } from "../simple-options.ts";
-import { OpenAIClient } from "./client.ts";
+import { OpenAIClient, ProviderHttpError } from "./client.ts";
 import {
   convertResponsesMessages,
   convertResponsesTools,
@@ -41,23 +43,6 @@ export interface OpenAIResponsesOptions extends StreamOptions {
 
 type DoneReason = Extract<AssistantMessageEvent, { type: "done" }>["reason"];
 type ErrorReason = Extract<AssistantMessageEvent, { type: "error" }>["reason"];
-
-function resolveCacheRetention(
-  cacheRetention?: CacheRetention,
-): CacheRetention {
-  if (cacheRetention) {
-    return cacheRetention;
-  }
-
-  if (
-    typeof process !== "undefined" &&
-    process.env.PI_CACHE_RETENTION === "long"
-  ) {
-    return "long";
-  }
-
-  return "short";
-}
 
 function getPromptCacheRetention(
   baseUrl: string,
@@ -147,19 +132,19 @@ function buildRequestHeaders(
 }
 
 function toErrorMessage(error: unknown): string {
-  if (error instanceof Errors.AuthMissing) {
+  if (error instanceof AuthMissing) {
     return `No API key for provider: ${error.provider}`;
   }
 
-  if (error instanceof Errors.ProviderHttpError) {
+  if (error instanceof ProviderHttpError) {
     return error.body ?? `Provider HTTP error: ${error.status}`;
   }
 
-  if (error instanceof Errors.ProviderProtocolError) {
+  if (error instanceof ProviderProtocolError) {
     return error.message;
   }
 
-  if (error instanceof Errors.Aborted) {
+  if (error instanceof Aborted) {
     return error.message;
   }
 
@@ -172,7 +157,7 @@ function toErrorEvent(
   error: unknown,
 ): Extract<AssistantMessageEvent, { type: "error" }> {
   const reason: ErrorReason =
-    signal?.aborted || error instanceof Errors.Aborted ? "aborted" : "error";
+    signal?.aborted || error instanceof Aborted ? "aborted" : "error";
 
   return {
     type: "error",
@@ -188,6 +173,7 @@ function toErrorEvent(
 function buildParams(
   model: OpenAIResponsesModel,
   context: Context,
+  cacheRetention: CacheRetention,
   options?: OpenAIResponsesOptions,
 ): ResponseCreateParamsStreaming {
   const messages = convertResponsesMessages(
@@ -196,7 +182,6 @@ function buildParams(
     OPENAI_TOOL_CALL_PROVIDERS,
   );
 
-  const cacheRetention = resolveCacheRetention(options?.cacheRetention);
   const params: ResponseCreateParamsStreaming = {
     model: model.id,
     input: messages,
@@ -315,19 +300,21 @@ const streamOpenAIResponsesInternal = (
           toErrorEvent(
             initialMessage,
             options.signal,
-            new Errors.Aborted({ message: "Request was aborted" }),
+            new Aborted({ message: "Request was aborted" }),
           ),
         );
       }
 
       const prepared = yield* Effect.exit(Effect.gen(function* () {
         const client = yield* OpenAIClient;
-        let params = buildParams(model, context, options);
+        const cacheRetention =
+          options?.cacheRetention ?? (yield* cacheRetentionConfig);
+        let params = buildParams(model, context, cacheRetention, options);
 
         const nextParams = yield* Effect.tryPromise({
           try: () => Promise.resolve(options?.onPayload?.(params, model)),
           catch: (cause) =>
-            new Errors.ProviderProtocolError({
+            new ProviderProtocolError({
               provider: model.provider,
               message: cause instanceof Error ? cause.message : String(cause),
             }),
@@ -391,14 +378,14 @@ const streamOpenAIResponsesInternal = (
           }
 
           if (options?.signal?.aborted) {
-            throw new Errors.Aborted({ message: "Request was aborted" });
+            throw new Aborted({ message: "Request was aborted" });
           }
 
           if (
             latestMessage.stopReason === "error" ||
             latestMessage.stopReason === "aborted"
           ) {
-            throw new Errors.ProviderProtocolError({
+            throw new ProviderProtocolError({
               provider: model.provider,
               message: latestMessage.errorMessage ?? "Provider ended in failure state",
             });

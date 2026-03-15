@@ -1,7 +1,15 @@
 import OpenAI from "openai";
-import { Config, Effect, Layer, Option, Redacted, ServiceMap } from "effect";
-import { AuthMissing, ProviderHttpError } from "../../errors.ts";
+import { Effect, Layer, Redacted, Schema as S, ServiceMap } from "effect";
+import { AuthMissing, AuthResolver } from "../../auth-resolver.ts"
 import type { Provider } from "../../types.ts";
+
+export class ProviderHttpError extends S.TaggedErrorClass<ProviderHttpError>(
+  "ProviderHttpError",
+)("ProviderHttpError", {
+  provider: S.String,
+  status: S.Number,
+  body: S.optional(S.String),
+}) {}
 
 export interface CreateResponsesStreamInput {
   readonly provider: Provider;
@@ -25,22 +33,18 @@ export class OpenAIClient extends ServiceMap.Service<
 >()("pi-effect/ai/providers/openai/client") {
   static readonly layer = Layer.effect(
     this,
-    Effect.gen(function* () {
-      const configuredApiKey = yield* Config.redacted("OPENAI_API_KEY")
-        .pipe(Config.option)
-        .asEffect();
+    Effect.gen(function*() {
+      const authResolver = yield* AuthResolver
 
       return OpenAIClient.of({
         createResponsesStream: Effect.fn("OpenAIClient.createResponsesStream")(
-          function* (input) {
-            const apiKey = yield* Option.match(configuredApiKey, {
-              onSome: (value) =>
-                Effect.succeed(input.apiKey ?? Redacted.value(value)),
-              onNone: () =>
-                input.apiKey
-                  ? Effect.succeed(input.apiKey)
-                  : Effect.fail(new AuthMissing({ provider: input.provider })),
-            });
+          function*(input) {
+            const apiKey = yield* authResolver.resolveApiKey({
+              provider: input.provider,
+              explicitApiKey: input.apiKey,
+            }).pipe(
+              Effect.map(Redacted.value)
+            )
 
             const client = new OpenAI({
               apiKey,
@@ -64,9 +68,9 @@ export class OpenAIClient extends ServiceMap.Service<
                   provider: input.provider,
                   status:
                     typeof cause === "object" &&
-                    cause !== null &&
-                    "status" in cause &&
-                    typeof cause.status === "number"
+                      cause !== null &&
+                      "status" in cause &&
+                      typeof cause.status === "number"
                       ? cause.status
                       : 0,
                   body: cause instanceof Error ? cause.message : String(cause),
@@ -76,5 +80,5 @@ export class OpenAIClient extends ServiceMap.Service<
         ),
       });
     }),
-  );
+  ).pipe(Layer.provide(AuthResolver.layer));
 }

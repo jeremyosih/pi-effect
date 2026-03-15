@@ -1,4 +1,4 @@
-import { Effect, Schema as S, Stream } from "effect";
+import { ConfigProvider, Effect, Schema as S, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const openAiInstances = new Array<{ options: Record<string, unknown> }>();
@@ -173,6 +173,51 @@ describe("openai responses provider", () => {
     });
   });
 
+  it("reads OPENAI_API_KEY from typed config when apiKey is omitted", async () => {
+    createResponseStream.mockResolvedValueOnce(makeCompletedStream());
+
+    const events = OpenAIResponsesProvider.stream(makeModel(), makeContext());
+
+    await Effect.runPromise(
+      Stream.runDrain(events).pipe(
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnv({
+            env: { OPENAI_API_KEY: "env-key" },
+          }),
+        ),
+      ),
+    );
+
+    expect(openAiInstances).toHaveLength(1);
+    expect(openAiInstances[0]?.options.apiKey).toBe("env-key");
+  });
+
+  it("reads PI_CACHE_RETENTION from typed config when the option is omitted", async () => {
+    createResponseStream.mockResolvedValueOnce(makeCompletedStream());
+
+    const events = OpenAIResponsesProvider.stream(makeModel(), makeContext(), {
+      apiKey: "test-key",
+      sessionId: "session-1" as never,
+    });
+
+    await Effect.runPromise(
+      Stream.runDrain(events).pipe(
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnv({
+            env: { PI_CACHE_RETENTION: "long" },
+          }),
+        ),
+      ),
+    );
+
+    expect(createResponseStream.mock.calls[0]?.[0]).toMatchObject({
+      prompt_cache_key: "session-1",
+      prompt_cache_retention: "24h",
+    });
+  });
+
   it("injects dynamic Copilot headers into the OpenAI client constructor", async () => {
     createResponseStream.mockResolvedValueOnce(makeCompletedStream());
 
@@ -219,5 +264,29 @@ describe("openai responses provider", () => {
         total: 30,
       },
     });
+  });
+
+  it("emits a canonical error event when auth cannot be resolved", async () => {
+    const events = OpenAIResponsesProvider.stream(makeModel(), makeContext());
+
+    const collected = await Effect.runPromise(
+      Stream.runCollect(events).pipe(
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnv({ env: {} }),
+        ),
+      ),
+    );
+
+    expect(Array.from(collected)).toEqual([
+      expect.objectContaining({
+        type: "error",
+        reason: "error",
+        error: expect.objectContaining({
+          errorMessage: "No API key for provider: openai",
+        }),
+      }),
+    ]);
+    expect(createResponseStream).not.toHaveBeenCalled();
   });
 });

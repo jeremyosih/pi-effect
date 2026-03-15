@@ -1,24 +1,14 @@
 import { Schema as S } from "effect";
+import { AuthMissing } from "./auth-resolver.ts";
+import { ProviderHttpError } from "./providers/openai/client.ts";
+
+export { AuthMissing } from "./auth-resolver.ts";
+export { ProviderHttpError } from "./providers/openai/client.ts";
 
 export class ProviderNotFound extends S.TaggedErrorClass<ProviderNotFound>(
   "ProviderNotFound",
 )("ProviderNotFound", {
   api: S.String,
-}) {}
-
-export class AuthMissing extends S.TaggedErrorClass<AuthMissing>("AuthMissing")(
-  "AuthMissing",
-  {
-    provider: S.String,
-  },
-) {}
-
-export class ProviderHttpError extends S.TaggedErrorClass<ProviderHttpError>(
-  "ProviderHttpError",
-)("ProviderHttpError", {
-  provider: S.String,
-  status: S.Number,
-  body: S.optional(S.String),
 }) {}
 
 export class ProviderProtocolError extends S.TaggedErrorClass<ProviderProtocolError>(
