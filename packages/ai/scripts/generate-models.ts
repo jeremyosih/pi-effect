@@ -82,12 +82,9 @@ async function fetchOpenRouterModels(): Promise<Model<any>[]> {
 
       // Convert pricing from $/token to $/million tokens
       const inputCost = parseFloat(model.pricing?.prompt || "0") * 1_000_000;
-      const outputCost =
-        parseFloat(model.pricing?.completion || "0") * 1_000_000;
-      const cacheReadCost =
-        parseFloat(model.pricing?.input_cache_read || "0") * 1_000_000;
-      const cacheWriteCost =
-        parseFloat(model.pricing?.input_cache_write || "0") * 1_000_000;
+      const outputCost = parseFloat(model.pricing?.completion || "0") * 1_000_000;
+      const cacheReadCost = parseFloat(model.pricing?.input_cache_read || "0") * 1_000_000;
+      const cacheWriteCost = parseFloat(model.pricing?.input_cache_write || "0") * 1_000_000;
 
       const normalizedModel: Model<any> = {
         id: modelKey,
@@ -132,9 +129,7 @@ async function fetchAiGatewayModels(): Promise<Model<any>[]> {
       return Number.isFinite(parsed) ? parsed : 0;
     };
 
-    const items = Array.isArray(data.data)
-      ? (data.data as AiGatewayModel[])
-      : [];
+    const items = Array.isArray(data.data) ? (data.data as AiGatewayModel[]) : [];
     for (const model of items) {
       const tags = Array.isArray(model.tags) ? model.tags : [];
       // Only include models that support tools
@@ -147,10 +142,8 @@ async function fetchAiGatewayModels(): Promise<Model<any>[]> {
 
       const inputCost = toNumber(model.pricing?.input) * 1_000_000;
       const outputCost = toNumber(model.pricing?.output) * 1_000_000;
-      const cacheReadCost =
-        toNumber(model.pricing?.input_cache_read) * 1_000_000;
-      const cacheWriteCost =
-        toNumber(model.pricing?.input_cache_write) * 1_000_000;
+      const cacheReadCost = toNumber(model.pricing?.input_cache_read) * 1_000_000;
+      const cacheWriteCost = toNumber(model.pricing?.input_cache_write) * 1_000_000;
 
       models.push({
         id: model.id,
@@ -171,9 +164,7 @@ async function fetchAiGatewayModels(): Promise<Model<any>[]> {
       });
     }
 
-    console.log(
-      `Fetched ${models.length} tool-capable models from Vercel AI Gateway`,
-    );
+    console.log(`Fetched ${models.length} tool-capable models from Vercel AI Gateway`);
     return models;
   } catch (error) {
     console.error("Failed to fetch Vercel AI Gateway models:", error);
@@ -191,9 +182,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 
     // Process Amazon Bedrock models
     if (data["amazon-bedrock"]?.models) {
-      for (const [modelId, model] of Object.entries(
-        data["amazon-bedrock"].models,
-      )) {
+      for (const [modelId, model] of Object.entries(data["amazon-bedrock"].models)) {
         const m = model as ModelsDevModel;
         if (m.tool_call !== true) continue;
 
@@ -216,9 +205,10 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "amazon-bedrock" as const,
           baseUrl: "https://bedrock-runtime.us-east-1.amazonaws.com",
           reasoning: m.reasoning === true,
-          input: (m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"]) as ("text" | "image")[],
+          input: (m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"]) as (
+            | "text"
+            | "image"
+          )[],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -244,9 +234,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "anthropic",
           baseUrl: "https://api.anthropic.com",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -272,9 +260,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "google",
           baseUrl: "https://generativelanguage.googleapis.com/v1beta",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -300,9 +286,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "openai",
           baseUrl: "https://api.openai.com/v1",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -328,9 +312,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "groq",
           baseUrl: "https://api.groq.com/openai/v1",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -356,9 +338,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "cerebras",
           baseUrl: "https://api.cerebras.ai/v1",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -384,9 +364,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "xai",
           baseUrl: "https://api.x.ai/v1",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -443,9 +421,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "mistral",
           baseUrl: "https://api.mistral.ai",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -471,9 +447,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "huggingface",
           baseUrl: "https://router.huggingface.co/v1",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -543,9 +517,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: variant.provider,
           baseUrl,
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -560,20 +532,15 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 
     // Process GitHub Copilot models
     if (data["github-copilot"]?.models) {
-      for (const [modelId, model] of Object.entries(
-        data["github-copilot"].models,
-      )) {
+      for (const [modelId, model] of Object.entries(data["github-copilot"].models)) {
         const m = model as ModelsDevModel & { status?: string };
         if (m.tool_call !== true) continue;
         if (m.status === "deprecated") continue;
 
         // Claude 4.x models route to Anthropic Messages API
-        const isCopilotClaude4 = /^claude-(haiku|sonnet|opus)-4([.\-]|$)/.test(
-          modelId,
-        );
+        const isCopilotClaude4 = /^claude-(haiku|sonnet|opus)-4([.-]|$)/.test(modelId);
         // gpt-5 models require responses API, others use completions
-        const needsResponsesApi =
-          modelId.startsWith("gpt-5") || modelId.startsWith("oswe");
+        const needsResponsesApi = modelId.startsWith("gpt-5") || modelId.startsWith("oswe");
 
         const api: Api = isCopilotClaude4
           ? "anthropic-messages"
@@ -588,9 +555,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           provider: "github-copilot",
           baseUrl: "https://api.individual.githubcopilot.com",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -644,9 +609,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
             // MiniMax's Anthropic-compatible API - SDK appends /v1/messages
             baseUrl,
             reasoning: m.reasoning === true,
-            input: m.modalities?.input?.includes("image")
-              ? ["text", "image"]
-              : ["text"],
+            input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
             cost: {
               input: m.cost?.input || 0,
               output: m.cost?.output || 0,
@@ -662,9 +625,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 
     // Process Kimi For Coding models
     if (data["kimi-for-coding"]?.models) {
-      for (const [modelId, model] of Object.entries(
-        data["kimi-for-coding"].models,
-      )) {
+      for (const [modelId, model] of Object.entries(data["kimi-for-coding"].models)) {
         const m = model as ModelsDevModel;
         if (m.tool_call !== true) continue;
 
@@ -676,9 +637,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
           // Kimi For Coding's Anthropic-compatible API - SDK appends /v1/messages
           baseUrl: "https://api.kimi.com/coding",
           reasoning: m.reasoning === true,
-          input: m.modalities?.input?.includes("image")
-            ? ["text", "image"]
-            : ["text"],
+          input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
           cost: {
             input: m.cost?.input || 0,
             output: m.cost?.output || 0,
@@ -709,11 +668,7 @@ async function generateModels() {
   const aiGatewayModels = await fetchAiGatewayModels();
 
   // Combine models (models.dev has priority)
-  const allModels = [
-    ...modelsDevModels,
-    ...openRouterModels,
-    ...aiGatewayModels,
-  ].filter(
+  const allModels = [...modelsDevModels, ...openRouterModels, ...aiGatewayModels].filter(
     (model) =>
       !(
         (model.provider === "opencode" || model.provider === "opencode-go") &&
@@ -723,9 +678,7 @@ async function generateModels() {
 
   // Fix incorrect cache pricing for Claude Opus 4.5 from models.dev
   // models.dev has 3x the correct pricing (1.5/18.75 instead of 0.5/6.25)
-  const opus45 = allModels.find(
-    (m) => m.provider === "anthropic" && m.id === "claude-opus-4-5",
-  );
+  const opus45 = allModels.find((m) => m.provider === "anthropic" && m.id === "claude-opus-4-5");
   if (opus45) {
     opus45.cost.cacheRead = 0.5;
     opus45.cost.cacheWrite = 6.25;
@@ -751,23 +704,19 @@ async function generateModels() {
       (candidate.provider === "anthropic" ||
         candidate.provider === "opencode" ||
         candidate.provider === "opencode-go") &&
-      (candidate.id === "claude-opus-4-6" ||
-        candidate.id === "claude-sonnet-4-6")
+      (candidate.id === "claude-opus-4-6" || candidate.id === "claude-sonnet-4-6")
     ) {
       candidate.contextWindow = 1000000;
     }
     // OpenCode variants list Claude Sonnet 4/4.5 with 1M context, actual limit is 200K
     if (
-      (candidate.provider === "opencode" ||
-        candidate.provider === "opencode-go") &&
-      (candidate.id === "claude-sonnet-4-5" ||
-        candidate.id === "claude-sonnet-4")
+      (candidate.provider === "opencode" || candidate.provider === "opencode-go") &&
+      (candidate.id === "claude-sonnet-4-5" || candidate.id === "claude-sonnet-4")
     ) {
       candidate.contextWindow = 200000;
     }
     if (
-      (candidate.provider === "opencode" ||
-        candidate.provider === "opencode-go") &&
+      (candidate.provider === "opencode" || candidate.provider === "opencode-go") &&
       candidate.id === "gpt-5.4"
     ) {
       candidate.contextWindow = 272000;
@@ -778,10 +727,7 @@ async function generateModels() {
       candidate.maxTokens = 128000;
     }
     // Keep selected OpenRouter model metadata stable until upstream settles.
-    if (
-      candidate.provider === "openrouter" &&
-      candidate.id === "moonshotai/kimi-k2.5"
-    ) {
+    if (candidate.provider === "openrouter" && candidate.id === "moonshotai/kimi-k2.5") {
       candidate.cost.input = 0.41;
       candidate.cost.output = 2.06;
       candidate.cost.cacheRead = 0.07;
@@ -797,9 +743,7 @@ async function generateModels() {
   // Add missing EU Opus 4.6 profile
   if (
     !allModels.some(
-      (m) =>
-        m.provider === "amazon-bedrock" &&
-        m.id === "eu.anthropic.claude-opus-4-6-v1",
+      (m) => m.provider === "amazon-bedrock" && m.id === "eu.anthropic.claude-opus-4-6-v1",
     )
   ) {
     allModels.push({
@@ -822,11 +766,7 @@ async function generateModels() {
   }
 
   // Add missing Claude Opus 4.6
-  if (
-    !allModels.some(
-      (m) => m.provider === "anthropic" && m.id === "claude-opus-4-6",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "anthropic" && m.id === "claude-opus-4-6")) {
     allModels.push({
       id: "claude-opus-4-6",
       name: "Claude Opus 4.6",
@@ -847,11 +787,7 @@ async function generateModels() {
   }
 
   // Add missing Claude Sonnet 4.6
-  if (
-    !allModels.some(
-      (m) => m.provider === "anthropic" && m.id === "claude-sonnet-4-6",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "anthropic" && m.id === "claude-sonnet-4-6")) {
     allModels.push({
       id: "claude-sonnet-4-6",
       name: "Claude Sonnet 4.6",
@@ -872,12 +808,7 @@ async function generateModels() {
   }
 
   // Add missing Gemini 3.1 Flash Lite Preview until models.dev includes it.
-  if (
-    !allModels.some(
-      (m) =>
-        m.provider === "google" && m.id === "gemini-3.1-flash-lite-preview",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "google" && m.id === "gemini-3.1-flash-lite-preview")) {
     allModels.push({
       id: "gemini-3.1-flash-lite-preview",
       name: "Gemini 3.1 Flash Lite Preview",
@@ -898,11 +829,7 @@ async function generateModels() {
   }
 
   // Add missing gpt models
-  if (
-    !allModels.some(
-      (m) => m.provider === "openai" && m.id === "gpt-5-chat-latest",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "openai" && m.id === "gpt-5-chat-latest")) {
     allModels.push({
       id: "gpt-5-chat-latest",
       name: "GPT-5 Chat Latest",
@@ -922,9 +849,7 @@ async function generateModels() {
     });
   }
 
-  if (
-    !allModels.some((m) => m.provider === "openai" && m.id === "gpt-5.1-codex")
-  ) {
+  if (!allModels.some((m) => m.provider === "openai" && m.id === "gpt-5.1-codex")) {
     allModels.push({
       id: "gpt-5.1-codex",
       name: "GPT-5.1 Codex",
@@ -944,11 +869,7 @@ async function generateModels() {
     });
   }
 
-  if (
-    !allModels.some(
-      (m) => m.provider === "openai" && m.id === "gpt-5.1-codex-max",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "openai" && m.id === "gpt-5.1-codex-max")) {
     allModels.push({
       id: "gpt-5.1-codex-max",
       name: "GPT-5.1 Codex Max",
@@ -968,11 +889,7 @@ async function generateModels() {
     });
   }
 
-  if (
-    !allModels.some(
-      (m) => m.provider === "openai" && m.id === "gpt-5.3-codex-spark",
-    )
-  ) {
+  if (!allModels.some((m) => m.provider === "openai" && m.id === "gpt-5.3-codex-spark")) {
     allModels.push({
       id: "gpt-5.3-codex-spark",
       name: "GPT-5.3 Codex Spark",
@@ -997,11 +914,7 @@ async function generateModels() {
     (m) => m.provider === "github-copilot" && m.id === "gpt-5.2-codex",
   );
   if (copilotBaseModel) {
-    if (
-      !allModels.some(
-        (m) => m.provider === "github-copilot" && m.id === "gpt-5.3-codex",
-      )
-    ) {
+    if (!allModels.some((m) => m.provider === "github-copilot" && m.id === "gpt-5.3-codex")) {
       allModels.push({
         ...copilotBaseModel,
         id: "gpt-5.3-codex",
@@ -1137,9 +1050,7 @@ async function generateModels() {
   allModels.push(...codexModels);
 
   // Add missing Grok models
-  if (
-    !allModels.some((m) => m.provider === "xai" && m.id === "grok-code-fast-1")
-  ) {
+  if (!allModels.some((m) => m.provider === "xai" && m.id === "grok-code-fast-1")) {
     allModels.push({
       id: "grok-code-fast-1",
       name: "Grok Code Fast 1",
@@ -1263,8 +1174,7 @@ async function generateModels() {
 
   // Antigravity models (Gemini 3, Claude, GPT-OSS via Google Cloud)
   // Uses sandbox endpoint and different OAuth credentials for access to additional models
-  const ANTIGRAVITY_ENDPOINT =
-    "https://daily-cloudcode-pa.sandbox.googleapis.com";
+  const ANTIGRAVITY_ENDPOINT = "https://daily-cloudcode-pa.sandbox.googleapis.com";
   const antigravityModels: Model<"google-gemini-cli">[] = [
     {
       id: "gemini-3.1-pro-high",
@@ -1559,18 +1469,13 @@ async function generateModels() {
   ];
   // Only add if not already present from models.dev
   for (const model of kimiCodingModels) {
-    if (
-      !allModels.some((m) => m.provider === "kimi-coding" && m.id === model.id)
-    ) {
+    if (!allModels.some((m) => m.provider === "kimi-coding" && m.id === model.id)) {
       allModels.push(model);
     }
   }
 
   const azureOpenAiModels: Model<Api>[] = allModels
-    .filter(
-      (model) =>
-        model.provider === "openai" && model.api === "openai-responses",
-    )
+    .filter((model) => model.provider === "openai" && model.api === "openai-responses")
     .map((model) => ({
       ...model,
       api: "azure-openai-responses",

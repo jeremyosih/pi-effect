@@ -1,16 +1,16 @@
-import { Config, Option, Redacted } from "effect"
-import type { CacheRetention, KnownProvider, Provider } from "./types.ts"
+import { Config, Option, Redacted } from "effect";
+import type { CacheRetention, KnownProvider, Provider } from "./types.ts";
 
-export const AUTHENTICATED = "<authenticated>" as const
-export type Authenticated = typeof AUTHENTICATED
-export type EnvApiKey = Redacted.Redacted<string>
-export type EnvAuth = EnvApiKey | Authenticated
+export const AUTHENTICATED = "<authenticated>" as const;
+export type Authenticated = typeof AUTHENTICATED;
+export type EnvApiKey = Redacted.Redacted<string>;
+export type EnvAuth = EnvApiKey | Authenticated;
 
-type EnvKeyChain = readonly [string, ...string[]]
-type OptionalStringConfig = Config.Config<Option.Option<string>>
-export type OptionalApiKeyConfig = Config.Config<Option.Option<EnvApiKey>>
-export type OptionalAuthenticatedConfig = Config.Config<Option.Option<Authenticated>>
-export type OptionalEnvAuthConfig = Config.Config<Option.Option<EnvAuth>>
+type EnvKeyChain = readonly [string, ...string[]];
+type OptionalStringConfig = Config.Config<Option.Option<string>>;
+export type OptionalApiKeyConfig = Config.Config<Option.Option<EnvApiKey>>;
+export type OptionalAuthenticatedConfig = Config.Config<Option.Option<Authenticated>>;
+export type OptionalEnvAuthConfig = Config.Config<Option.Option<EnvAuth>>;
 
 // Fall back to environment variables
 const apiKeyEnvByProvider = {
@@ -34,13 +34,12 @@ const apiKeyEnvByProvider = {
   opencode: ["OPENCODE_API_KEY"],
   "opencode-go": ["OPENCODE_API_KEY"],
   "kimi-coding": ["KIMI_API_KEY"],
-} as const satisfies Partial<Record<KnownProvider, EnvKeyChain>>
+} as const satisfies Partial<Record<KnownProvider, EnvKeyChain>>;
 
-const nonEmptyStringConfig = (name: string): Config.Config<string> =>
-  Config.nonEmptyString(name)
+const nonEmptyStringConfig = (name: string): Config.Config<string> => Config.nonEmptyString(name);
 
 const firstStringConfig = (names: EnvKeyChain): OptionalStringConfig => {
-  const [head, ...tail] = names
+  const [head, ...tail] = names;
 
   return tail
     .reduce(
@@ -50,16 +49,14 @@ const firstStringConfig = (names: EnvKeyChain): OptionalStringConfig => {
     .pipe(
       Config.map((value) => Option.some(value)),
       Config.orElse(() => Config.succeed(Option.none())),
-    )
-}
+    );
+};
 
 const apiKeyConfig = (name: string): Config.Config<EnvApiKey> =>
-  nonEmptyStringConfig(name).pipe(
-    Config.map((value) => Redacted.make(value, { label: name })),
-  )
+  nonEmptyStringConfig(name).pipe(Config.map((value) => Redacted.make(value, { label: name })));
 
 const firstApiKeyConfig = (names: EnvKeyChain): OptionalApiKeyConfig => {
-  const [head, ...tail] = names
+  const [head, ...tail] = names;
 
   return tail
     .reduce(
@@ -69,25 +66,24 @@ const firstApiKeyConfig = (names: EnvKeyChain): OptionalApiKeyConfig => {
     .pipe(
       Config.map((value) => Option.some(value)),
       Config.orElse(() => Config.succeed(Option.none())),
-    )
-}
+    );
+};
 
 const hasAnyEnvConfig = (names: EnvKeyChain): Config.Config<boolean> =>
-  firstStringConfig(names).pipe(
-    Config.map(Option.isSome),
-  )
+  firstStringConfig(names).pipe(Config.map(Option.isSome));
 
-export const googleApplicationCredentialsConfig: OptionalStringConfig =
-  firstStringConfig(["GOOGLE_APPLICATION_CREDENTIALS"])
+export const googleApplicationCredentialsConfig: OptionalStringConfig = firstStringConfig([
+  "GOOGLE_APPLICATION_CREDENTIALS",
+]);
 
 export const googleVertexProjectConfig: OptionalStringConfig = firstStringConfig([
   "GOOGLE_CLOUD_PROJECT",
   "GCLOUD_PROJECT",
-])
+]);
 
 export const googleVertexLocationConfig: OptionalStringConfig = firstStringConfig([
   "GOOGLE_CLOUD_LOCATION",
-])
+]);
 
 /**
  * Amazon Bedrock supports multiple credential sources:
@@ -126,38 +122,33 @@ export const bedrockAuthenticatedConfig: OptionalAuthenticatedConfig = Config.al
         ? Option.some(AUTHENTICATED)
         : Option.none(),
   ),
-)
+);
 
-export const cacheRetentionConfig = Config.literal(
-  "long",
-  "PI_CACHE_RETENTION",
-).pipe(
+export const cacheRetentionConfig = Config.literal("long", "PI_CACHE_RETENTION").pipe(
   Config.orElse(() => Config.succeed("short" as const)),
-)
+);
 
 /**
  * Get API key for provider from known environment variables, e.g. OPENAI_API_KEY.
  *
  * Will not return API keys for providers that require OAuth tokens.
  */
-export function envApiKeyConfig(provider: KnownProvider): OptionalApiKeyConfig
-export function envApiKeyConfig(provider: Provider): OptionalApiKeyConfig
+export function envApiKeyConfig(provider: KnownProvider): OptionalApiKeyConfig;
+export function envApiKeyConfig(provider: Provider): OptionalApiKeyConfig;
 export function envApiKeyConfig(provider: Provider): OptionalApiKeyConfig {
   const names =
     provider in apiKeyEnvByProvider
       ? apiKeyEnvByProvider[provider as keyof typeof apiKeyEnvByProvider]
-      : undefined
+      : undefined;
 
-  return names === undefined
-    ? Config.succeed(Option.none())
-    : firstApiKeyConfig(names)
+  return names === undefined ? Config.succeed(Option.none()) : firstApiKeyConfig(names);
 }
 
-export function envAuthConfig(provider: KnownProvider): OptionalEnvAuthConfig
-export function envAuthConfig(provider: Provider): OptionalEnvAuthConfig
+export function envAuthConfig(provider: KnownProvider): OptionalEnvAuthConfig;
+export function envAuthConfig(provider: Provider): OptionalEnvAuthConfig;
 export function envAuthConfig(provider: Provider): OptionalEnvAuthConfig {
   if (provider === "amazon-bedrock") {
-    return bedrockAuthenticatedConfig
+    return bedrockAuthenticatedConfig;
   }
   return envApiKeyConfig(provider).pipe(
     Config.map((key) =>
@@ -166,5 +157,5 @@ export function envAuthConfig(provider: Provider): OptionalEnvAuthConfig {
         onNone: () => Option.none<EnvAuth>(),
       }),
     ),
-  )
+  );
 }

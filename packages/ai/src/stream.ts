@@ -22,9 +22,11 @@ export const stream = Effect.fn("ai.stream")(function* <TApi extends Api>(
   return provider.stream(model, context, options);
 });
 
-export const streamSimple = Effect.fn("ai.streamSimple")(function* <
-  TApi extends Api,
->(model: ProviderModel<TApi>, context: Context, options?: SimpleStreamOptions) {
+export const streamSimple = Effect.fn("ai.streamSimple")(function* <TApi extends Api>(
+  model: ProviderModel<TApi>,
+  context: Context,
+  options?: SimpleStreamOptions,
+) {
   const registry = yield* ProviderRegistry;
   const provider = yield* registry.resolve(model.api);
   return provider.streamSimple(model, context, options);
@@ -37,11 +39,7 @@ export const complete = Effect.fn("ai.complete")(function* <TApi extends Api>(
 ) {
   const events = yield* stream(model, context, options);
 
-  const message = yield* Stream.runFold(
-    events,
-    Option.none<AssistantMessage>,
-    foldTerminalMessage,
-  );
+  const message = yield* Stream.runFold(events, Option.none<AssistantMessage>, foldTerminalMessage);
 
   if (Option.isNone(message)) {
     return yield* new Errors.ProviderProtocolError({
@@ -53,16 +51,14 @@ export const complete = Effect.fn("ai.complete")(function* <TApi extends Api>(
   return message.value;
 });
 
-export const completeSimple = Effect.fn("ai.completeSimple")(function* <
-  TApi extends Api,
->(model: ProviderModel<TApi>, context: Context, options?: SimpleStreamOptions) {
+export const completeSimple = Effect.fn("ai.completeSimple")(function* <TApi extends Api>(
+  model: ProviderModel<TApi>,
+  context: Context,
+  options?: SimpleStreamOptions,
+) {
   const events = yield* streamSimple(model, context, options);
 
-  const message = yield* Stream.runFold(
-    events,
-    Option.none<AssistantMessage>,
-    foldTerminalMessage,
-  );
+  const message = yield* Stream.runFold(events, Option.none<AssistantMessage>, foldTerminalMessage);
 
   if (Option.isNone(message)) {
     return yield* new Errors.ProviderProtocolError({

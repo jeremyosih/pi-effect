@@ -21,30 +21,30 @@ type ModelApi<
     : never
   : never;
 
-export function getModel<TProvider extends KnownProvider, TModelId extends keyof (typeof MODELS)[TProvider]>(
-  provider: TProvider,
-  modelId: TModelId,
-): Model<ModelApi<TProvider, TModelId>> | undefined {
+export function getModel<
+  TProvider extends KnownProvider,
+  TModelId extends keyof (typeof MODELS)[TProvider],
+>(provider: TProvider, modelId: TModelId): Model<ModelApi<TProvider, TModelId>> | undefined {
   const providerModels = modelRegistry.get(provider);
   return providerModels?.get(modelId as string) as Model<ModelApi<TProvider, TModelId>> | undefined;
 }
 
 export function getProviders(): KnownProvider[] {
-  return Array.from(modelRegistry.keys()) as KnownProvider[]
+  return Array.from(modelRegistry.keys()) as KnownProvider[];
 }
 
 export function getModels<TProvider extends KnownProvider>(
   provider: TProvider,
 ): Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[] {
   const models = modelRegistry.get(provider);
-  return models ? (Array.from(models.values()) as Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[]) : [];
+  return models
+    ? (Array.from(models.values()) as Model<
+        ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>
+      >[])
+    : [];
 }
 
-
-export function calculateCost<TApi extends Api>(
-  model: Model<TApi>,
-  usage: Usage,
-): Cost {
+export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage): Cost {
   const input = (model.cost.input / 1_000_000) * usage.input;
   const output = (model.cost.output / 1_000_000) * usage.output;
   const cacheRead = (model.cost.cacheRead / 1_000_000) * usage.cacheRead;

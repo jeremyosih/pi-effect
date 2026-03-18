@@ -27,9 +27,7 @@ export const isTerminalAssistantMessageEvent = (
     }),
   )(event);
 
-export const assistantMessageFromTerminalEvent = (
-  event: TerminalAssistantMessageEvent,
-) =>
+export const assistantMessageFromTerminalEvent = (event: TerminalAssistantMessageEvent) =>
   Match.type<TerminalAssistantMessageEvent>().pipe(
     Match.discriminatorsExhaustive("type")({
       done: ({ message }) => message,

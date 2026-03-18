@@ -15,11 +15,7 @@ import type {
 export function transformMessages<TApi extends Api>(
   messages: ReadonlyArray<Message>,
   model: Model<TApi>,
-  normalizeToolCallId?: (
-    id: string,
-    model: Model<TApi>,
-    source: AssistantMessage,
-  ) => string,
+  normalizeToolCallId?: (id: string, model: Model<TApi>, source: AssistantMessage) => string,
 ): Message[] {
   // Build a map of original tool call IDs to normalized IDs
   const toolCallIdMap = new Map<string, string>();
@@ -102,16 +98,11 @@ export function transformMessages<TApi extends Api>(
 
         if (!isSameModel && block.thoughtSignature) {
           normalizedToolCall = { ...block };
-          delete (normalizedToolCall as { thoughtSignature?: string })
-            .thoughtSignature;
+          delete (normalizedToolCall as { thoughtSignature?: string }).thoughtSignature;
         }
 
         if (!isSameModel && normalizeToolCallId) {
-          const normalizedId = normalizeToolCallId(
-            block.id,
-            model,
-            assistantMsg,
-          );
+          const normalizedId = normalizeToolCallId(block.id, model, assistantMsg);
           if (normalizedId !== block.id) {
             toolCallIdMap.set(block.id, normalizedId);
             normalizedToolCall = {
@@ -169,9 +160,7 @@ export function transformMessages<TApi extends Api>(
       }
 
       // Track tool calls from this assistant message
-      const toolCalls = msg.content.filter(
-        (block): block is ToolCall => block.type === "toolCall",
-      );
+      const toolCalls = msg.content.filter((block): block is ToolCall => block.type === "toolCall");
 
       if (toolCalls.length > 0) {
         pendingToolCalls = toolCalls;

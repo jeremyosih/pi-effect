@@ -3,10 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
 import { Model, type AssistantMessage, type Context } from "../../types.ts";
 import { shortHash } from "../../utils/hash.ts";
-import {
-  convertResponsesMessages,
-  processResponsesEvents,
-} from "./responses-shared.ts";
+import { convertResponsesMessages, processResponsesEvents } from "./responses-shared.ts";
 
 const decodeModel = S.decodeSync(Model);
 
@@ -80,13 +77,9 @@ async function collectProcess(
                 ...usage.cost,
                 input: (usage.cost.input * 2) as typeof usage.cost.input,
                 output: (usage.cost.output * 2) as typeof usage.cost.output,
-                cacheRead: (usage.cost.cacheRead *
-                  2) as typeof usage.cost.cacheRead,
-                cacheWrite: (usage.cost.cacheWrite *
-                  2) as typeof usage.cost.cacheWrite,
-                total: ((usage.cost.total ?? 0) * 2) as NonNullable<
-                  typeof usage.cost.total
-                >,
+                cacheRead: (usage.cost.cacheRead * 2) as typeof usage.cost.cacheRead,
+                cacheWrite: (usage.cost.cacheWrite * 2) as typeof usage.cost.cacheWrite,
+                total: ((usage.cost.total ?? 0) * 2) as NonNullable<typeof usage.cost.total>,
               },
             } as typeof usage)
           : usage,

@@ -5,10 +5,10 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "declaration": true,
-    "composite": true,
+    "composite": true
   },
   "include": ["src"],
   "paths": {
-    "@/*": ["./src/*"],
-  },
+    "@/*": ["./src/*"]
+  }
 }

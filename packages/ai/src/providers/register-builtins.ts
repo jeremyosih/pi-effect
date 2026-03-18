@@ -6,5 +6,4 @@ export const builtInProviders = [
   OpenAIResponsesProvider,
 ] as const satisfies ReadonlyArray<ApiProvider>;
 
-export const ProviderRegistryBuiltinsLive =
-  ProviderRegistryLive(builtInProviders);
+export const ProviderRegistryBuiltinsLive = ProviderRegistryLive(builtInProviders);

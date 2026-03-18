@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  decodeCompletedJson,
-  parseStreamingJson,
-} from "./json-parse.ts";
+import { decodeCompletedJson, parseStreamingJson } from "./json-parse.ts";
 
 describe("json-parse", () => {
   it("returns an empty object for empty streaming input", () => {

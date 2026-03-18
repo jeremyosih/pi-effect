@@ -13,11 +13,7 @@ export type ProviderStream = Stream.Stream<AssistantMessageEvent>;
 
 export interface ApiProvider {
   readonly api: Api;
-  readonly stream: (
-    model: Model,
-    context: Context,
-    options?: StreamOptions,
-  ) => ProviderStream;
+  readonly stream: (model: Model, context: Context, options?: StreamOptions) => ProviderStream;
   readonly streamSimple: (
     model: Model,
     context: Context,
@@ -26,13 +22,10 @@ export interface ApiProvider {
 }
 
 export interface ProviderRegistry {
-  readonly resolve: (
-    api: Api,
-  ) => Effect.Effect<ApiProvider, Errors.ProviderNotFound>;
+  readonly resolve: (api: Api) => Effect.Effect<ApiProvider, Errors.ProviderNotFound>;
 }
 
-export const ProviderRegistry =
-  ServiceMap.Service<ProviderRegistry>("ProviderRegistry");
+export const ProviderRegistry = ServiceMap.Service<ProviderRegistry>("ProviderRegistry");
 
 export const makeProviderRegistry = (providers: ReadonlyArray<ApiProvider>) => {
   const providersByApi = new Map<Api, ApiProvider>(

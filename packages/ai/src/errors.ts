@@ -5,11 +5,12 @@ import { ProviderHttpError } from "./providers/openai/client.ts";
 export { AuthMissing } from "./auth-resolver.ts";
 export { ProviderHttpError } from "./providers/openai/client.ts";
 
-export class ProviderNotFound extends S.TaggedErrorClass<ProviderNotFound>(
+export class ProviderNotFound extends S.TaggedErrorClass<ProviderNotFound>("ProviderNotFound")(
   "ProviderNotFound",
-)("ProviderNotFound", {
-  api: S.String,
-}) {}
+  {
+    api: S.String,
+  },
+) {}
 
 export class ProviderProtocolError extends S.TaggedErrorClass<ProviderProtocolError>(
   "ProviderProtocolError",
@@ -76,8 +77,4 @@ export const ProviderStreamError = S.Union([
   Aborted,
 ]);
 
-export const AiError = S.Union([
-  ProviderNotFound,
-  ProviderStreamError,
-  ReducerError,
-]);
+export const AiError = S.Union([ProviderNotFound, ProviderStreamError, ReducerError]);

@@ -12,9 +12,7 @@ function parseMode(value: string | undefined): Mode {
   if ((MODES as readonly string[]).includes(value)) {
     return value as Mode;
   }
-  throw new Error(
-    `Invalid mode: ${value}. Use one of: ${MODES.join(", ")}`,
-  );
+  throw new Error(`Invalid mode: ${value}. Use one of: ${MODES.join(", ")}`);
 }
 
 const MODE = parseMode(process.argv[2] ?? process.env.AI_TEMP_MODE);
@@ -46,9 +44,7 @@ const model = S.decodeSync(Ai.Model)({
 const decodeContext = S.decodeSync(Ai.Context);
 const decodeToolResultMessage = S.decodeSync(Ai.ToolResultMessage);
 
-function providerOptions(
-  options: Record<string, unknown>,
-): Ai.ProviderStreamOptions {
+function providerOptions(options: Record<string, unknown>): Ai.ProviderStreamOptions {
   return options as unknown as Ai.ProviderStreamOptions;
 }
 
@@ -84,8 +80,7 @@ const toolContext = decodeContext({
   messages: [
     {
       role: "user",
-      content:
-        "Use the get_weather tool for Zurich. Do not answer from memory. Call the tool.",
+      content: "Use the get_weather tool for Zurich. Do not answer from memory. Call the tool.",
       timestamp: Date.now(),
     },
   ],
@@ -169,9 +164,7 @@ async function runTurn(
 }
 
 function getFirstToolCall(message: Ai.AssistantMessage): Ai.ToolCall {
-  const toolCall = message.content.find(
-    (block): block is Ai.ToolCall => block.type === "toolCall",
-  );
+  const toolCall = message.content.find((block): block is Ai.ToolCall => block.type === "toolCall");
   if (!toolCall) {
     throw new Error("Expected at least one tool call in assistant message");
   }
@@ -179,8 +172,7 @@ function getFirstToolCall(message: Ai.AssistantMessage): Ai.ToolCall {
 }
 
 function makeWeatherToolResult(toolCall: Ai.ToolCall) {
-  const city =
-    typeof toolCall.arguments.city === "string" ? toolCall.arguments.city : "Unknown";
+  const city = typeof toolCall.arguments.city === "string" ? toolCall.arguments.city : "Unknown";
 
   return decodeToolResultMessage({
     role: "toolResult",
@@ -211,20 +203,28 @@ async function main() {
   console.log(`[mode=${MODE}]`);
 
   if (MODE === "text") {
-    await runTurn("turn-1", textContext, providerOptions({
-      apiKey,
-      reasoningEffort: "high",
-      reasoningSummary: "detailed",
-      maxTokens: 1500 as never,
-    }));
+    await runTurn(
+      "turn-1",
+      textContext,
+      providerOptions({
+        apiKey,
+        reasoningEffort: "high",
+        reasoningSummary: "detailed",
+        maxTokens: 1500 as never,
+      }),
+    );
     return;
   }
 
   if (MODE === "tool") {
-    await runTurn("turn-1", toolContext, providerOptions({
-      apiKey,
-      maxTokens: 400 as never,
-    }));
+    await runTurn(
+      "turn-1",
+      toolContext,
+      providerOptions({
+        apiKey,
+        maxTokens: 400 as never,
+      }),
+    );
     return;
   }
 
@@ -237,8 +237,7 @@ async function main() {
         messages: [
           {
             role: "user",
-            content:
-              "Write a long tutorial on Effect Streams with 40 bullets and short examples.",
+            content: "Write a long tutorial on Effect Streams with 40 bullets and short examples.",
             timestamp: Date.now(),
           },
         ],
@@ -254,15 +253,17 @@ async function main() {
     return;
   }
 
-  const firstMessage = await runTurn("turn-1", toolContext, providerOptions({
-    apiKey,
-    maxTokens: 400 as never,
-  }));
+  const firstMessage = await runTurn(
+    "turn-1",
+    toolContext,
+    providerOptions({
+      apiKey,
+      maxTokens: 400 as never,
+    }),
+  );
 
   if (firstMessage.stopReason !== "toolUse") {
-    throw new Error(
-      `Expected first turn to stop for tool use, got: ${firstMessage.stopReason}`,
-    );
+    throw new Error(`Expected first turn to stop for tool use, got: ${firstMessage.stopReason}`);
   }
 
   const toolCall = getFirstToolCall(firstMessage);
@@ -276,10 +277,14 @@ async function main() {
     tools: toolContext.tools,
   };
 
-  await runTurn("turn-2", secondContext, providerOptions({
-    apiKey,
-    maxTokens: 600 as never,
-  }));
+  await runTurn(
+    "turn-2",
+    secondContext,
+    providerOptions({
+      apiKey,
+      maxTokens: 600 as never,
+    }),
+  );
 }
 
 await main();

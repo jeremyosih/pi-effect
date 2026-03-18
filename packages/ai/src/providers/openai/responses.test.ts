@@ -221,13 +221,9 @@ describe("openai responses provider", () => {
   it("injects dynamic Copilot headers into the OpenAI client constructor", async () => {
     createResponseStream.mockResolvedValueOnce(makeCompletedStream());
 
-    const events = OpenAIResponsesProvider.stream(
-      makeModel("github-copilot"),
-      makeContext(true),
-      {
-        apiKey: "test-key",
-      },
-    );
+    const events = OpenAIResponsesProvider.stream(makeModel("github-copilot"), makeContext(true), {
+      apiKey: "test-key",
+    });
 
     await Effect.runPromise(Stream.runDrain(events));
 
@@ -271,10 +267,7 @@ describe("openai responses provider", () => {
 
     const collected = await Effect.runPromise(
       Stream.runCollect(events).pipe(
-        Effect.provideService(
-          ConfigProvider.ConfigProvider,
-          ConfigProvider.fromEnv({ env: {} }),
-        ),
+        Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} })),
       ),
     );
 

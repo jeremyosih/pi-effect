@@ -86,9 +86,7 @@ describe("stream facade", () => {
 
   it.effect("stream exposes canonical events unchanged", () =>
     Effect.gen(function* () {
-      const events = yield* Ai.stream(makeModel(), makeContext()).pipe(
-        Effect.provide(layer),
-      );
+      const events = yield* Ai.stream(makeModel(), makeContext()).pipe(Effect.provide(layer));
 
       const collected = yield* Stream.runFold(
         events,
@@ -105,9 +103,7 @@ describe("stream facade", () => {
 
   it.effect("complete folds the same stream into the final message", () =>
     Effect.gen(function* () {
-      const result = yield* Ai.complete(makeModel(), makeContext()).pipe(
-        Effect.provide(layer),
-      );
+      const result = yield* Ai.complete(makeModel(), makeContext()).pipe(Effect.provide(layer));
 
       assert.deepStrictEqual(result, rawMessage);
     }),

@@ -4,9 +4,7 @@ import { Schema as S, Struct, Stream } from "effect";
 
 const NonNegativeInt = S.Int.check(S.isGreaterThanOrEqualTo(0));
 
-export const UnixTimestampMs = NonNegativeInt.pipe(
-  S.brand("UnixTimestampMs"),
-).annotate({
+export const UnixTimestampMs = NonNegativeInt.pipe(S.brand("UnixTimestampMs")).annotate({
   identifier: "TimestampMs",
   description: "Unix timestamp in milliseconds",
 });
@@ -24,25 +22,19 @@ export const MaxTokens = NonNegativeInt.pipe(S.brand("MaxTokens")).annotate({
 });
 export type MaxTokens = typeof MaxTokens.Type;
 
-export const RetryDelayMs = NonNegativeInt.pipe(
-  S.brand("RetryDelayMs"),
-).annotate({
+export const RetryDelayMs = NonNegativeInt.pipe(S.brand("RetryDelayMs")).annotate({
   identifier: "RetryDelayMs",
   description: "Retry delay cap in milliseconds",
 });
 export type RetryDelayMs = typeof RetryDelayMs.Type;
 
-export const ThinkingBudgetTokens = NonNegativeInt.pipe(
-  S.brand("ThinkingBudgetTokens"),
-).annotate({
+export const ThinkingBudgetTokens = NonNegativeInt.pipe(S.brand("ThinkingBudgetTokens")).annotate({
   identifier: "ThinkingBudgetTokens",
   description: "Token budget for a reasoning level",
 });
 export type ThinkingBudgetTokens = typeof ThinkingBudgetTokens.Type;
 
-export const Temperature = S.Number.check(
-  S.isBetween({ minimum: 0, maximum: 2 }),
-)
+export const Temperature = S.Number.check(S.isBetween({ minimum: 0, maximum: 2 }))
   .pipe(S.brand("Temperature"))
   .annotate({
     identifier: "Temperature",
@@ -56,12 +48,10 @@ export const SessionId = S.NonEmptyString.pipe(S.brand("SessionId")).annotate({
 });
 export type SessionId = typeof SessionId.Type;
 
-export const ToolCallId = S.NonEmptyString.pipe(S.brand("ToolCallId")).annotate(
-  {
-    identifier: "ToolCallId",
-    description: "Opaque identifier for a tool call",
-  },
-);
+export const ToolCallId = S.NonEmptyString.pipe(S.brand("ToolCallId")).annotate({
+  identifier: "ToolCallId",
+  description: "Opaque identifier for a tool call",
+});
 export type ToolCallId = typeof ToolCallId.Type;
 
 export const ModelId = S.NonEmptyString.pipe(S.brand("ModelId")).annotate({
@@ -70,17 +60,13 @@ export const ModelId = S.NonEmptyString.pipe(S.brand("ModelId")).annotate({
 });
 export type ModelId = typeof ModelId.Type;
 
-export const ProviderSignature = S.NonEmptyString.pipe(
-  S.brand("ProviderSignature"),
-).annotate({
+export const ProviderSignature = S.NonEmptyString.pipe(S.brand("ProviderSignature")).annotate({
   identifier: "ProviderSignature",
   description: "Opaque provider thinking/thought signature",
 });
 export type ProviderSignature = typeof ProviderSignature.Type;
 
-export const DollarsPerMillionToken = S.Number.check(
-  S.isGreaterThanOrEqualTo(0),
-)
+export const DollarsPerMillionToken = S.Number.check(S.isGreaterThanOrEqualTo(0))
   .pipe(S.brand("DollarsPerMillionToken"))
   .annotate({
     identifier: "DollarsPerMillionToken",
@@ -152,13 +138,7 @@ export const Provider = S.Union([KnownProvider, S.String]);
 export type Provider = typeof Provider.Type | ({} & string);
 
 //TODO: I am hihgly suscpicious of this because seems tightly coppled to OAI vs Claude max etc.
-export const ThinkingLevel = S.Literals([
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-]);
+export const ThinkingLevel = S.Literals(["minimal", "low", "medium", "high", "xhigh"]);
 export type ThinkingLevel = typeof ThinkingLevel.Type;
 
 /** Token budget for each thinking level (token-based providers only) */
@@ -301,11 +281,7 @@ export type ToolCall = typeof ToolCall.Type;
 
 export const UserContent = S.Union([TextContent, ImageContent]);
 
-export const AssistantContent = S.Union([
-  TextContent,
-  ThinkingContent,
-  ToolCall,
-]);
+export const AssistantContent = S.Union([TextContent, ThinkingContent, ToolCall]);
 
 export const Cost = S.Struct({
   input: DollarsPerMillionToken,
@@ -490,15 +466,11 @@ export const OpenAICompletionsCompat = S.Struct({
   /** Wether the provider supports `reasoning_effort`. Default: auto-detected from the URL. */
   supportsReasoningEffort: S.optional(S.Boolean),
   /** Optional mapping from pi-ai reasoning levels to provider/model-specific `reasoning_effort` values. */
-  reasoningEffortMap: S.optionalKey(
-    S.Record(ThinkingLevel, S.optionalKey(S.String)),
-  ),
+  reasoningEffortMap: S.optionalKey(S.Record(ThinkingLevel, S.optionalKey(S.String))),
   /** Wether the provider supports `stream_options: {include_usage: true }` for token usage in streaming responses. Default.true */
   supportsUsageInStreaming: S.optional(S.Boolean),
   /** Which dield to use for max tokens. Default: auto-detected from the URL */
-  maxTokensField: S.optional(
-    S.Literals(["max_completion_tokens", "max_tokens"]),
-  ),
+  maxTokensField: S.optional(S.Literals(["max_completion_tokens", "max_tokens"])),
   /** Whether tool results require the `name` field. Default: auto-detected from URL. */
   requiresToolResultName: S.optional(S.Boolean),
   /** Whether a user message after tool results requires an assistant message in between. Default: auto-detected from URL. */

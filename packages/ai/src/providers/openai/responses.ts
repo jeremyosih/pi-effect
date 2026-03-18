@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Stream } from "effect";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
 import { AuthMissing } from "../../auth-resolver.ts";
-import { cacheRetentionConfig } from "../../env-api-keys.ts"
+import { cacheRetentionConfig } from "../../env-api-keys.ts";
 import { Aborted, ProviderProtocolError } from "../../errors.ts";
 import type { ApiProvider } from "../../provider.ts";
 import type {
@@ -17,10 +17,7 @@ import type {
 } from "../../types.ts";
 import { assistantMessageFromEvent } from "../../utils/assistant-events.ts";
 import { supportsXhigh } from "../../models.ts";
-import {
-  buildCopilotDynamicHeaders,
-  hasCopilotVisionInput,
-} from "../github-copilot-headers.ts";
+import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.ts";
 import { buildBaseOptions, clampReasoning } from "../simple-options.ts";
 import { OpenAIClient, ProviderHttpError } from "./client.ts";
 import {
@@ -29,11 +26,7 @@ import {
   processResponsesEvents,
 } from "./responses-shared.ts";
 
-const OPENAI_TOOL_CALL_PROVIDERS = new Set([
-  "openai",
-  "openai-codex",
-  "opencode",
-]);
+const OPENAI_TOOL_CALL_PROVIDERS = new Set(["openai", "openai-codex", "opencode"]);
 
 export interface OpenAIResponsesOptions extends StreamOptions {
   reasoningEffort?: "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -59,9 +52,7 @@ function getPromptCacheRetention(
   return undefined;
 }
 
-function makeEmptyAssistantMessage(
-  model: OpenAIResponsesModel,
-): AssistantMessage {
+function makeEmptyAssistantMessage(model: OpenAIResponsesModel): AssistantMessage {
   return {
     role: "assistant",
     content: [],
@@ -110,7 +101,7 @@ function buildRequestHeaders(
   optionHeaders?: Record<string, string>,
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    ...(model.headers ?? {}),
+    ...model.headers,
   };
 
   if (model.provider === "github-copilot") {
@@ -156,8 +147,7 @@ function toErrorEvent(
   signal: AbortSignal | undefined,
   error: unknown,
 ): Extract<AssistantMessageEvent, { type: "error" }> {
-  const reason: ErrorReason =
-    signal?.aborted || error instanceof Aborted ? "aborted" : "error";
+  const reason: ErrorReason = signal?.aborted || error instanceof Aborted ? "aborted" : "error";
 
   return {
     type: "error",
@@ -176,11 +166,7 @@ function buildParams(
   cacheRetention: CacheRetention,
   options?: OpenAIResponsesOptions,
 ): ResponseCreateParamsStreaming {
-  const messages = convertResponsesMessages(
-    model,
-    context,
-    OPENAI_TOOL_CALL_PROVIDERS,
-  );
+  const messages = convertResponsesMessages(model, context, OPENAI_TOOL_CALL_PROVIDERS);
 
   const params: ResponseCreateParamsStreaming = {
     model: model.id,
@@ -193,10 +179,7 @@ function buildParams(
     params.prompt_cache_key = options.sessionId;
   }
 
-  const promptCacheRetention = getPromptCacheRetention(
-    model.baseUrl,
-    cacheRetention,
-  );
+  const promptCacheRetention = getPromptCacheRetention(model.baseUrl, cacheRetention);
   if (promptCacheRetention !== undefined) {
     params.prompt_cache_retention = promptCacheRetention;
   }
@@ -218,10 +201,7 @@ function buildParams(
   }
 
   if (model.reasoning) {
-    if (
-      options?.reasoningEffort !== undefined ||
-      options?.reasoningSummary !== undefined
-    ) {
+    if (options?.reasoningEffort !== undefined || options?.reasoningSummary !== undefined) {
       params.reasoning = {
         effort: options?.reasoningEffort ?? "medium",
         summary: options?.reasoningSummary ?? "auto",
@@ -271,13 +251,8 @@ function applyServiceTierPricing(
     output: (usage.cost.output * multiplier) as typeof usage.cost.output,
     cacheRead: (usage.cost.cacheRead * multiplier) as typeof usage.cost.cacheRead,
     cacheWrite: (usage.cost.cacheWrite * multiplier) as typeof usage.cost.cacheWrite,
-    total: (
-      (usage.cost.input +
-        usage.cost.output +
-        usage.cost.cacheRead +
-        usage.cost.cacheWrite) *
-      multiplier
-    ) as NonNullable<typeof usage.cost.total>,
+    total: ((usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite) *
+      multiplier) as NonNullable<typeof usage.cost.total>,
   };
 
   return {
@@ -305,53 +280,46 @@ const streamOpenAIResponsesInternal = (
         );
       }
 
-      const prepared = yield* Effect.exit(Effect.gen(function* () {
-        const client = yield* OpenAIClient;
-        const cacheRetention =
-          options?.cacheRetention ?? (yield* cacheRetentionConfig);
-        let params = buildParams(model, context, cacheRetention, options);
+      const prepared = yield* Effect.exit(
+        Effect.gen(function* () {
+          const client = yield* OpenAIClient;
+          const cacheRetention = options?.cacheRetention ?? (yield* cacheRetentionConfig);
+          let params = buildParams(model, context, cacheRetention, options);
 
-        const nextParams = yield* Effect.tryPromise({
-          try: () => Promise.resolve(options?.onPayload?.(params, model)),
-          catch: (cause) =>
-            new ProviderProtocolError({
-              provider: model.provider,
-              message: cause instanceof Error ? cause.message : String(cause),
-            }),
-        });
+          const nextParams = yield* Effect.tryPromise({
+            try: () => Promise.resolve(options?.onPayload?.(params, model)),
+            catch: (cause) =>
+              new ProviderProtocolError({
+                provider: model.provider,
+                message: cause instanceof Error ? cause.message : String(cause),
+              }),
+          });
 
-        if (nextParams !== undefined) {
-          params = nextParams as ResponseCreateParamsStreaming;
-        }
+          if (nextParams !== undefined) {
+            params = nextParams as ResponseCreateParamsStreaming;
+          }
 
-        const requestInput = {
-          provider: model.provider,
-          baseUrl: model.baseUrl,
-          defaultHeaders: buildRequestHeaders(model, context, options?.headers),
-          params,
-          ...(options?.signal !== undefined ? { signal: options.signal } : {}),
-          ...(options?.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
-        };
+          const requestInput = {
+            provider: model.provider,
+            baseUrl: model.baseUrl,
+            defaultHeaders: buildRequestHeaders(model, context, options?.headers),
+            params,
+            ...(options?.signal !== undefined ? { signal: options.signal } : {}),
+            ...(options?.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
+          };
 
-        const openaiStream = yield* client.createResponsesStream(requestInput);
-        return { openaiStream };
-      }));
+          const openaiStream = yield* client.createResponsesStream(requestInput);
+          return { openaiStream };
+        }),
+      );
 
       if (Exit.isFailure(prepared)) {
         return Stream.make(
-          toErrorEvent(
-            initialMessage,
-            options?.signal,
-            Cause.squash(prepared.cause),
-          ),
+          toErrorEvent(initialMessage, options?.signal, Cause.squash(prepared.cause)),
         );
       }
 
-      const events = (async function* (): AsyncGenerator<
-        AssistantMessageEvent,
-        void,
-        void
-      > {
+      const events = (async function* (): AsyncGenerator<AssistantMessageEvent, void, void> {
         let latestMessage = initialMessage;
         yield { type: "start", partial: latestMessage };
 
@@ -381,10 +349,7 @@ const streamOpenAIResponsesInternal = (
             throw new Aborted({ message: "Request was aborted" });
           }
 
-          if (
-            latestMessage.stopReason === "error" ||
-            latestMessage.stopReason === "aborted"
-          ) {
+          if (latestMessage.stopReason === "error" || latestMessage.stopReason === "aborted") {
             throw new ProviderProtocolError({
               provider: model.provider,
               message: latestMessage.errorMessage ?? "Provider ended in failure state",

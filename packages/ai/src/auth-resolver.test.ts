@@ -1,7 +1,7 @@
-import { ConfigProvider, Effect, FileSystem, Layer, Redacted } from "effect"
-import { describe, expect, it } from "vitest"
-import { AuthResolver } from "./auth-resolver.ts"
-import { AUTHENTICATED } from "./env-api-keys.ts"
+import { ConfigProvider, Effect, FileSystem, Layer, Redacted } from "effect";
+import { describe, expect, it } from "vitest";
+import { AuthResolver } from "./auth-resolver.ts";
+import { AUTHENTICATED } from "./env-api-keys.ts";
 
 describe("AuthResolver", () => {
   it("prefers explicit apiKey over env config", async () => {
@@ -23,10 +23,10 @@ describe("AuthResolver", () => {
           ),
         ),
       ),
-    )
+    );
 
-    expect(Redacted.value(result)).toBe("explicit-key")
-  })
+    expect(Redacted.value(result)).toBe("explicit-key");
+  });
 
   it("reads provider auth from env via typed config", async () => {
     const result = await Effect.runPromise(
@@ -46,10 +46,10 @@ describe("AuthResolver", () => {
           ),
         ),
       ),
-    )
+    );
 
-    expect(Redacted.value(result)).toBe("env-key")
-  })
+    expect(Redacted.value(result)).toBe("env-key");
+  });
 
   it("supports google-vertex ADC when filesystem and config are available", async () => {
     const result = await Effect.runPromise(
@@ -68,8 +68,7 @@ describe("AuthResolver", () => {
             Layer.succeed(ConfigProvider.ConfigProvider)(
               ConfigProvider.fromEnv({
                 env: {
-                  GOOGLE_APPLICATION_CREDENTIALS:
-                    "/tmp/application-default-credentials.json",
+                  GOOGLE_APPLICATION_CREDENTIALS: "/tmp/application-default-credentials.json",
                   GOOGLE_CLOUD_PROJECT: "demo-project",
                   GOOGLE_CLOUD_LOCATION: "europe-west4",
                 },
@@ -78,10 +77,10 @@ describe("AuthResolver", () => {
           ),
         ),
       ),
-    )
+    );
 
-    expect(result).toBe(AUTHENTICATED)
-  })
+    expect(result).toBe(AUTHENTICATED);
+  });
 
   it("fails with AuthMissing when auth cannot be resolved", async () => {
     await expect(
@@ -94,9 +93,7 @@ describe("AuthResolver", () => {
           Effect.provide(
             Layer.mergeAll(
               AuthResolver.layer,
-              Layer.succeed(ConfigProvider.ConfigProvider)(
-                ConfigProvider.fromEnv({ env: {} }),
-              ),
+              Layer.succeed(ConfigProvider.ConfigProvider)(ConfigProvider.fromEnv({ env: {} })),
             ),
           ),
         ),
@@ -104,6 +101,6 @@ describe("AuthResolver", () => {
     ).rejects.toMatchObject({
       _tag: "AuthMissing",
       provider: "openai",
-    })
-  })
-})
+    });
+  });
+});
